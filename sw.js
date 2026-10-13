@@ -2,9 +2,9 @@
 // Change the version whenever any bundled game asset changes.
 // Version is synchronized from package.json by the release command.
 const CACHE_PREFIX = 'three-outs-shell-';
-const CACHE = CACHE_PREFIX + 'v89';
+const CACHE = CACHE_PREFIX + 'v90';
 const FILES = ["./", "./index.html", "./style.css", "./rules.js", "./game.js", "./stadium.js", "./pitch.js", "./audio.js", "./pwa.js", "./manifest.webmanifest", "./vendor/three.module.min.js", "./vendor/three.core.min.js", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/icon-maskable.png", "./icons/apple-touch-icon.png", "./audio/bat-hit.mp3", "./audio/glove.mp3", "./feedback.js", "./batting.js", "./input.js", "./swing.js", "./field.js", "./fielding.js", "./trajectory.js", "./aiming.js", "./touch-check.html", "./touch-check.js", "./contact-window.js", "./collision.js", "./stadium-layout.js", "./progress.js", "./audio/crowd-ambience.wav", "./audio/crowd-reaction.mp3"];
-FILES.push('./install.html','./privacy.html','./play.html','./audio/bat-hit.mp3?v=89',...['style.css','rules.js','game.js','stadium.js','pitch.js','batting.js','feedback.js','audio.js','pwa.js','input.js','swing.js','field.js','fielding.js','trajectory.js','aiming.js','touch-check.js','contact-window.js','collision.js','stadium-layout.js','progress.js','music-library.js','music-menu.js'].map(file=>'./'+file+'?v=89'));
+FILES.push('./install.html','./privacy.html','./play.html','./audio/bat-hit.mp3?v=90',...['style.css','rules.js','game.js','stadium.js','pitch.js','batting.js','feedback.js','audio.js','pwa.js','input.js','swing.js','field.js','fielding.js','trajectory.js','aiming.js','touch-check.js','contact-window.js','collision.js','stadium-layout.js','progress.js','music-library.js','music-menu.js'].map(file=>'./'+file+'?v=90'));
 self.addEventListener('message',event=>{if(event.data?.type==='ACTIVATE_UPDATE')self.skipWaiting();});
 const URLS = FILES.map(file => new URL(file, self.location.href).href);
 self.addEventListener('install', event => {
