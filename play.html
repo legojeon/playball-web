@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#c8102e"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="플레이 볼!">
+<meta name="description" content="한 손으로 즐기는 9이닝 1인칭 오프라인 야구. 나만의 응원가로 타석을 채워보세요.">
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icons/icon-192.png"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png"><link rel="stylesheet" href="style.css?v=89">
+<title>플레이 볼!</title>
+</head>
+<body>
+<main id="game" class="game">
+<canvas tabindex="0" id="field" aria-label="타자의 눈높이에서 보는 3D 야구장. 누른 채 조준하고 손을 떼면 스윙합니다."></canvas>
+<div class="vignette" aria-hidden="true"></div>
+<header class="hud"><div class="tools"><button id="sound" class="icon" aria-label="응원가 끄기" aria-pressed="true">♪</button><button id="menu" class="icon" aria-label="설정과 기록">☰</button><button id="pause" class="icon" aria-label="일시정지" disabled>Ⅱ</button></div></header>
+<p id="game-state" class="sr-only" role="status" aria-live="polite"></p>
+<div id="feedback" class="feedback" aria-live="polite" hidden><strong id="call"></strong></div>
+<div id="pitch-result" class="pitch-result" hidden></div>
+<div id="ready-prompt" class="ready-prompt" hidden>화면을 눌러 준비</div>
+<div id="batted-stats" class="batted-stats" hidden></div>
+<section id="stadium-tour" hidden aria-label="경기장 둘러보기"><button id="skip-tour">타석으로 건너뛰기 →</button></section>
+<section id="overlay" class="overlay">
+ <div class="intro"><h1 class="game-title">플레이 볼!</h1><p>타석에 서면, 승부는 시작된다.</p><p id="resume-detail" class="small" hidden></p><button id="resume-game" class="primary" hidden>이어하기 ↗</button><button id="start" class="primary" disabled>야구장 준비 중…</button><button id="title-music" class="secondary">응원가 설정</button><p data-pwa-only class="small"><a href="./install.html" style="color:inherit">아이폰 홈 화면에 설치하기</a></p><p id="title-audio-hint" class="small" hidden>화면을 한 번 터치하면 테마 응원가가 시작돼요</p></div>
+</section>
+<button id="update-game" hidden>새 버전으로 다시 시작</button>
+<div id="fatal" class="fatal" role="alert" hidden></div>
+<dialog id="menu-dialog" aria-labelledby="settings-title"><div class="dialog-head"><h2 id="settings-title">설정</h2><button id="close-menu" class="icon" aria-label="설정 닫기">✕</button></div>
+<div class="audio-setting"><label class="setting-toggle" for="music-enabled"><span>응원가</span><input id="music-enabled" type="checkbox" role="switch" checked></label><label class="volume-label" for="music-volume">응원가 음량 <output id="music-level" for="music-volume">100%</output></label><input id="music-volume" class="volume-slider" type="range" min="0" max="100" step="1" value="100"></div>
+<div class="audio-setting"><label class="setting-toggle" for="crowd-enabled"><span>관중 소리</span><input id="crowd-enabled" type="checkbox" role="switch" checked></label><label class="volume-label" for="crowd-volume">관중 음량 <output id="crowd-level" for="crowd-volume">100%</output></label><input id="crowd-volume" class="volume-slider" type="range" min="0" max="100" step="1" value="100"></div>
+<button id="music-library" class="menu-button">응원가 가져오기</button><button id="controls-help" class="menu-button">조작방법</button><button id="privacy-help" class="menu-button">개인정보처리방침</button>
+<button id="restart-game" class="menu-button">경기 새로 시작 · 1회부터</button><button id="history" class="menu-button">내 기록</button><p id="offline-status" class="small" role="status">오프라인 준비 중</p><p class="small">플레이 볼! · v89</p></dialog>
+<dialog id="music-dialog" aria-labelledby="music-title"><div class="dialog-head"><h2 id="music-title">나의 응원가</h2><button id="close-music" class="icon" aria-label="응원가 닫기">✕</button></div>
+<p class="small">기기의 오디오 파일을 추가하세요. 파일은 이 기기에만 저장됩니다. 사용할 권한이 있는 음원을 선택해 주세요.</p>
+<h3>타석 응원가</h3><p class="small">응원가 이름이 전광판에 표시됩니다. 연필 버튼으로 바꿀 수 있어요. 앱을 켤 때 순서를 섞고 타석마다 한 곡씩 반복합니다.</p><button id="cheer-add" class="menu-button">타석 응원가 추가</button><input id="cheer-files" type="file" accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac,.flac,.webm" multiple hidden><div id="cheer-list"></div>
+<h3>테마 응원가</h3><p class="small">시작 · 회 종료 화면에서 반복합니다. 새 곡을 추가하면 기존 테마곡이 교체됩니다.</p><button id="anthem-add" class="menu-button">테마 응원가 선택</button><input id="anthem-files" type="file" accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac,.flac,.webm" hidden><div id="anthem-list"></div>
+<p id="music-status" class="small" role="status" aria-live="polite"></p><p class="small">곡당 20MB · 3분, 전체 24곡 · 60MB · 10분까지. 기기에 따라 지원 형식이 다릅니다. 앱 또는 브라우저 데이터 삭제 시 추가한 곡도 지워집니다.</p></dialog>
+<dialog id="music-rename-dialog" aria-labelledby="music-rename-title"><form id="music-rename-form"><div class="dialog-head"><h2 id="music-rename-title">응원가 이름 변경</h2></div><label for="music-name">전광판에 표시할 이름</label><input id="music-name" type="text" maxlength="80" required autocomplete="off" enterkeyhint="done"><p id="music-rename-status" class="small" role="alert"></p><div class="rename-actions"><button id="cancel-music-rename" type="button" class="menu-button">취소</button><button type="submit" class="menu-button">저장</button></div></form></dialog>
+<dialog id="controls-dialog" aria-labelledby="controls-title"><div class="dialog-head"><h2 id="controls-title">조작방법</h2><button id="close-controls" class="icon" aria-label="조작방법 닫기">✕</button></div>
+<ol class="controls-steps"><li><strong>화면을 눌러 준비</strong><p>준비 안내가 보이면 화면을 한 번 누르세요. 잠시 후 투수가 공을 던집니다.</p></li><li><strong>누른 채 움직여 조준</strong><p>다시 누르면 배트가 스트라이크존 중앙에서 시작합니다. 손가락을 움직인 만큼 배트도 같은 방향으로 움직입니다.</p></li><li><strong>손을 떼면 스윙</strong><p>공이 배트에 닿을 순간 손을 떼세요. 컴퓨터에서는 마우스를 누른 채 움직이고 놓으면 됩니다.</p></li></ol><p class="small">한 회는 3아웃까지, 한 경기는 9회까지 진행됩니다.</p></dialog>
+<dialog id="privacy-dialog" aria-labelledby="privacy-title"><div class="dialog-head"><h2 id="privacy-title">개인정보처리방침</h2><button id="close-privacy" class="icon" aria-label="개인정보처리방침 닫기">✕</button></div><iframe title="플레이 볼! 개인정보처리방침 전문" src="privacy.html" loading="lazy"></iframe></dialog>
+<dialog id="records"><div class="dialog-head"><h2>나의 기록</h2><button id="close-records" class="icon" aria-label="기록 닫기">✕</button></div><div id="record-list"></div><p class="small">9회 완주 경기 최근 10개 · 진행 중인 경기는 자동 저장</p></dialog>
+
+
+</main>
+<script src="rules.js?v=89"></script><script type="module" src="game.js?v=89"></script><script src="pwa.js?v=89"></script>
+</body></html>

@@ -1,0 +1,47 @@
+PLAY BALL! — Third-party credits
+
+Three.js 0.180.0
+Copyright © 2010–2025 three.js authors. MIT License.
+Full license: vendor/THREE-LICENSE.txt
+https://threejs.org/
+
+BAT HIT
+Bat Hit 9 FF095.aif — martinimeniscus (Florentine Films SFX)
+https://freesound.org/people/martinimeniscus/sounds/162886/
+License: Creative Commons Zero 1.0
+https://creativecommons.org/publicdomain/zero/1.0/
+Derived from publicly offered HQ MP3: excerpt at 0.035–0.885 seconds,
+65Hz highpass, 500Hz/3200Hz EQ, 7000Hz/7500Hz lowpass, soft saturation,
+1ms fade in and fade out from 0.10 to 0.40s, level adjustment, mono 44.1kHz MP3 encoding.
+No endorsement implied.
+
+GLOVE
+Baseball Into Glove.aif — keus92
+https://freesound.org/people/keus92/sounds/432502/
+License: Creative Commons Zero 1.0
+https://creativecommons.org/publicdomain/zero/1.0/
+Derived from publicly offered HQ MP3: excerpt at 2.425–2.925 seconds,
+fade out, mono conversion, MP3 encoding.
+
+ABS SIGNALS
+Original electronically synthesized tones generated with the Web Audio API.
+No recorded human voice or speech service is used.
+
+All recorded sound assets are bundled locally. No audio streaming is used.
+
+CROWD AMBIENCE (v57)
+Fenway Ambience 2.m4a — Douglas711
+https://freesound.org/people/Douglas711/sounds/424294/
+CC0 1.0: https://creativecommons.org/publicdomain/zero/1.0/
+Public HQ MP3 excerpt 5–31s, filtered, normalized and 2s crossfaded into a 24s PCM loop.
+
+CROWD REACTIONS (v57)
+RoaringCrowd.wav — benfree
+https://freesound.org/people/benfree/sounds/130568/
+CC0 1.0: https://creativecommons.org/publicdomain/zero/1.0/
+Public HQ MP3 excerpt 2–17s, filtered and normalized; random excerpts and gain envelopes per game event.
+
+v63: crowd-disappointment.mp3 removed from the game and offline cache.
+
+USER MUSIC
+No player or team songs are bundled. User-selected audio is stored locally on the device.
