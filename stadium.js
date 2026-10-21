@@ -1,14 +1,14 @@
-import {followAim} from './contact-window.js?v=93';
+import {followAim} from './contact-window.js?v=94';
 import * as T from './vendor/three.module.min.js';
-import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=93';
-import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=93';
-import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=93';
-import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=93';
-import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=93';
-import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition} from './fielding.js?v=93';
-import {sampleTrajectory} from './trajectory.js?v=93';
-export {BASES} from './field.js?v=93';
-import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=93';
+import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=94';
+import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=94';
+import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=94';
+import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=94';
+import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=94';
+import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition} from './fielding.js?v=94';
+import {sampleTrajectory} from './trajectory.js?v=94';
+export {BASES} from './field.js?v=94';
+import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=94';
 const V=(x,y,z)=>new T.Vector3(x,y,z);
 const stand=n=>[BASES[n][0]+(n===2?1.8:n===1?.5:-.5),.04,BASES[n][2]-.25];
 const mat=(color,extra={})=>new T.MeshStandardMaterial({color,roughness:.9,...extra});
@@ -188,8 +188,40 @@ export class Stadium {
    this.box(DUGOUT.length,.22,DUGOUT.depth,ribbonMat,0,DUGOUT.height,0,g);
    for(const x of [-DUGOUT.length/2,DUGOUT.length/2])this.box(.25,DUGOUT.height,DUGOUT.depth,dark,x,DUGOUT.height/2,0,g);
    this.box(DUGOUT.length-1,.25,.65,mat('#778879'),0,.55,1.25,g);
-   this.stadiumSign('HOME TEAM',DUGOUT.length-1,.6,0,DUGOUT.height+.13,-DUGOUT.depth/2-.02,0,'#fff3dd','#a2323b',g);
+   const home=side<0;
+   this.stadiumSign(home?'HOME TEAM':'AWAY TEAM',DUGOUT.length-1,.6,0,DUGOUT.height+.13,-DUGOUT.depth/2-.02,0,'#fff3dd',home?'#a2323b':'#243e51',g);
+   this.populateDugout(g,home);
   }
+ }
+ populateDugout(group,home){
+  const player=this.makePlayer(home),parts=[];
+  player.traverse(part=>{if(part.isMesh)parts.push({part,matrices:[]});});
+  // Bake the bench poses into shared instances: eight players cost one draw per
+  // model part, rather than eight complete animated player models on mobile.
+  for(let i=0;i<8;i++){
+   const seated=i<6;
+   player.position.set(seated?-6+i*2.4:i===6?-7.5:7.5,seated?-.115:0,seated?1.2:-.8);
+   player.rotation.y=Math.PI+(seated?0:i===6?-.2:.2);
+   this.poseRunning(player,0,false);
+   const {limbs,knees,elbows,head}=player.userData;
+   if(seated){
+    for(const leg of [limbs[0],limbs[2]])leg.rotation.x=-Math.PI/2;
+    for(const knee of knees)knee.rotation.x=Math.PI/2;
+    for(const arm of [limbs[1],limbs[3]])arm.rotation.x=-.28;
+    for(const elbow of elbows)elbow.rotation.x=-1.05;
+   }else for(const elbow of elbows)elbow.rotation.x=-.4;
+   head.rotation.y=(i%3-1)*.12;
+   player.children.at(-1).position.y=.025-player.position.y;
+   player.updateMatrixWorld(true);
+   for(const item of parts)item.matrices.push(item.part.matrixWorld.clone());
+  }
+  const roster=new T.Group();roster.name=home?'home-bench-players':'away-bench-players';
+  for(const {part,matrices} of parts){
+   const batch=new T.InstancedMesh(part.geometry,part.material,matrices.length);
+   matrices.forEach((matrix,i)=>batch.setMatrixAt(i,matrix));batch.instanceMatrix.needsUpdate=true;
+   roster.add(batch);
+  }
+  group.add(roster);
  }
  makePlayer(runner){
   const m=this.materials,p=new T.Group();const jersey=runner?m.runner:m.jersey;
@@ -352,13 +384,14 @@ export class Stadium {
   let heading=0;
   if(run){
    const t=this.runningProgress(run,time);
-   const eye=this.runningPoint(run,t);eye.y=this.playPosition.y;
+   const eye=this.runningPoint(run,t);eye.y+=this.playPosition.y-.04;
+   if(run.eyeOffset)eye.addScaledVector(run.eyeOffset,1-T.MathUtils.smoothstep(time-run.start,0,480));
    // Use the very same route and clock as the batter-runner; no extra camera race.
-   const leaving=T.MathUtils.smoothstep(time-run.start,0,run.delay);
+   const leaving=run.departure?1:T.MathUtils.smoothstep(time-run.start,0,run.delay);
    this.camera.position.copy(this.playPosition).lerp(eye,leaving);
    const ahead=this.runningPoint(run,Math.min(1,t+.002)),behind=this.runningPoint(run,Math.max(0,t-.002));
    heading=Math.atan2(ahead.x-behind.x,ahead.z-behind.z);
-   if(this.moves?.length)run.player.visible=false;
+   if(run.departure||this.moves?.length)run.player.visible=false;
    else if(!run.out&&run.to<4&&this.runners?.[run.to-1])this.runners[run.to-1].visible=false;
   }
   const dt=Math.max(0,time-(this.followTime??time))/1000;this.followTime=time;
@@ -367,7 +400,7 @@ export class Stadium {
    this.followRotation??=this.playView.clone();
    // Follow the position drawHit actually rendered, including bounces and throws.
    // On a hit, look from the runner's eye. After the ball disappears, face the route.
-   const followingBall=this.hit&&(!run||this.ball.visible);
+   const followingBall=!run?.departure&&this.hit&&(!run||this.ball.visible);
    const d=followingBall?this.ball.position.clone().sub(this.camera.position):V(Math.sin(heading)*10,-1,Math.cos(heading)*10);
    if(d.length()>2.5){
     const relative=Math.atan2(Math.sin(Math.atan2(d.x,d.z)-heading),Math.cos(Math.atan2(d.x,d.z)-heading));
@@ -501,7 +534,10 @@ export class Stadium {
    move.out=r.out;move.retire=inningOver||r.out;if(r.out)move.stopAt=time+r.outAt*1000;if(inningOver)move.stopAt=Math.min(move.stopAt??Infinity,time+play.finishAt*1000);
    move.player.visible=true;move.player.position.copy(move.path[0]);this.moves.push(move);if(r.from===0)this.followRun=move;
   });
-  return Math.max(...this.moves.map(m=>Math.min(m.duration,(m.stopAt??Infinity)-time)));
+  return Math.max(...this.moves.map(move=>{
+   if(move.from===0&&move.retire){const exit=this.departurePlan(move,move.stopAt);return exit.start+exit.duration-time;}
+   return Math.min(move.duration,(move.stopAt??Infinity)-time);
+  }));
  }
  runningProgress(move,time){return T.MathUtils.clamp((Math.min(time,move.stopAt??Infinity)-move.start-move.delay)/move.travel,0,1);}
  poseRunning(player,step,moving=true,walk=false){
@@ -523,6 +559,15 @@ export class Stadium {
   }
   return move.path.at(-1).clone();
  }
+ departurePlan(move,time){
+  if(move.exit)return move.exit;
+  const p=dugoutPose(-1),front=V(p.x-p.normal[0]*(DUGOUT.depth/2+1),.04,p.z-p.normal[1]*(DUGOUT.depth/2+1));
+  const path=[this.runningPoint(move,this.runningProgress(move,time)),front,V(p.x,.04,p.z)];
+  const lengths=path.slice(1).map((v,i)=>v.distanceTo(path[i])),distance=lengths.reduce((a,b)=>a+b,0),delay=240,travel=distance/4.2*1000;
+  // Very early catches can happen before the eye has left the batting box.
+  const eyeOffset=move.from===0&&this.playPosition?V(this.playPosition.x,.04,this.playPosition.z).sub(path[0]).multiplyScalar(1-T.MathUtils.smoothstep(time-move.start,0,move.delay)):null;
+  return move.exit={path,lengths,distance,start:time,delay,travel,duration:delay+travel,departure:true,eyeOffset};
+ }
  retireRunner(move,time){
   if(move.departed)return;
   move.departed=true;
@@ -530,20 +575,23 @@ export class Stadium {
   let player=this.departurePool.find(p=>!p.userData.departing);
   if(!player){player=this.makePlayer(true);player.scale.setScalar(1.18);this.scene?.add(player);this.departurePool.push(player);}
   player.userData.departing=true;player.visible=true;player.rotation.copy(move.player.rotation);
-  const p=dugoutPose(-1),front=V(p.x-p.normal[0]*(DUGOUT.depth/2+1),.04,p.z-p.normal[1]*(DUGOUT.depth/2+1));
-  const path=[this.runningPoint(move,this.runningProgress(move,time)),front,V(p.x,-.65,p.z)];
-  const lengths=path.slice(1).map((v,i)=>v.distanceTo(path[i])),distance=lengths.reduce((a,b)=>a+b,0);
-  player.position.copy(path[0]);
-  this.departures.push({player,path,lengths,distance,start:time,rotation:player.rotation.y,delay:240,travel:distance/4.2*1000});
+  const exit=this.departurePlan(move,time);exit.player=player;exit.rotation=player.rotation.y;
+  player.position.copy(exit.path[0]);
+  this.departures.push(exit);
+  if(this.followRun===move)this.followRun=exit;
  }
  retireBatter(time){
   const move=this.runningMove(this.runners[3],0,0,true,time);
+  move.path[0].set(this.playPosition.x,.04,this.playPosition.z);
+  this.followRun=move;
   this.retireRunner(move,time);
+  return move.exit.duration;
  }
  clearDepartures(){for(const p of this.departurePool??[]){p.visible=false;p.userData.departing=false;}this.departures=[];}
  updateDepartures(time){
   this.departures=(this.departures??[]).filter(move=>{
    const t=this.runningProgress(move,time),p=move.player;
+   p.visible=t<1;
    p.position.copy(this.runningPoint(move,t));
    const ahead=this.runningPoint(move,Math.min(1,t+.003));
    const moving=time>move.start+move.delay&&t<1;
@@ -591,7 +639,7 @@ export class Stadium {
   const outTime=batted?(batted.caught?batted.fielding?.time??batted.animationTime:batted.returnAt??batted.animationTime):move.duration/1000;
   move.stopAt=time+Math.max(0,outTime*1000);move.duration=Math.max(0,move.stopAt-time);
   this.moves=[move];this.followRun=move;
-  return move.duration;
+  return move.duration+this.departurePlan(move,move.stopAt).duration;
  }
  emitCatchSounds(h,time){
   if(!h)return;

@@ -1,14 +1,14 @@
-import {bindMusicMenu} from './music-menu.js?v=93';
-import {readProgress,makeProgress} from './progress.js?v=93';
-import {Stadium,STADIUM_TOUR} from './stadium.js?v=93';
-import {generatePitch,takenPitch,CONTACT_Z,ZONE,canTakePitch,missCallTime,canResolvePending} from './pitch.js?v=93';
-import {contact} from './batting.js?v=93';
-import {bindReleaseInput,bindLookInput,inputTime} from './input.js?v=93';
-import {reachableAim} from './collision.js?v=93';
-import {SWING} from './swing.js?v=93';
-import {SWING_FEEDBACK_MS,PITCH_FEEDBACK_MS,battedResultDelay} from './feedback.js?v=93';
-import {groundForcePlay} from './fielding.js?v=93';
-import {GameAudio} from './audio.js?v=93';
+import {bindMusicMenu} from './music-menu.js?v=94';
+import {readProgress,makeProgress} from './progress.js?v=94';
+import {Stadium,STADIUM_TOUR} from './stadium.js?v=94';
+import {generatePitch,takenPitch,CONTACT_Z,ZONE,canTakePitch,missCallTime,canResolvePending} from './pitch.js?v=94';
+import {contact} from './batting.js?v=94';
+import {bindReleaseInput,bindLookInput,inputTime} from './input.js?v=94';
+import {reachableAim} from './collision.js?v=94';
+import {SWING} from './swing.js?v=94';
+import {SWING_FEEDBACK_MS,PITCH_FEEDBACK_MS,battedResultDelay} from './feedback.js?v=94';
+import {groundForcePlay} from './fielding.js?v=94';
+import {GameAudio} from './audio.js?v=94';
 const $=id=>document.getElementById(id),R=window.BaseballRules;
 let callUntil=0,battedInfoUntil=0,pitchInfoUntil=0,pendingResult=null,skipAfter=Infinity;
 let scene,state=R.initial(),phase='title',paused=false,pitch=null,due=0,swingAt=-1e6,saved=false,nextPhase='ready';
@@ -115,7 +115,7 @@ function resolve(result,error=pitch?.swingError??0,time=now()){
  else if(result.foul){state=R.foul(state);sound.play('bat-hit');ballTime=scene.hitBall(pitch,time,result.batted);}
  else if(result.hbp){state=R.hitByPitch(state);sound.play('ball');runningTime=scene.run(before.bases,state.bases,1,true,time);}
  else if(result.ball){state=R.ball(state);sound.play('glove');sound.play('ball',.13);if(state.walks>before.walks){result.label='BASE ON BALLS';result.detail='볼넷 · 1루로 출루합니다';runningTime=scene.run(before.bases,state.bases,1,true,time);}}
- else{state=R.strike(state);sound.play('glove');sound.play(state.outs>beforeOuts?'out':'strike',.13);if(state.outs>beforeOuts){result.label='STRIKE OUT';result.detail='삼진 아웃';scene.retireBatter(time);}}
+ else{state=R.strike(state);sound.play('glove');sound.play(state.outs>beforeOuts?'out':'strike',.13);if(state.outs>beforeOuts){result.label='STRIKE OUT';result.detail='삼진 아웃';runningTime=scene.retireBatter(time);}}
  if(state.runs>before.runs)result.detail+=` · +${state.runs-before.runs}점`;
  nextPhase=R.nextPhaseAfterResult(before,state);
  saveProgress();
