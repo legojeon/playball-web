@@ -1,4 +1,4 @@
-import {ASSIST,inContactWindow} from './contact-window.js?v=90';
+import {ASSIST,inContactWindow} from './contact-window.js?v=91';
 export const CONTACT_Z=.35;
 export const ZONE={halfWidth:.41,bottom:.60,top:1.44};
 const BALL_RADIUS=.041;

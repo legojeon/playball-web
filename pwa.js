@@ -2,6 +2,15 @@
 (() => {
   const status = document.getElementById('offline-status');
   const updateButton = document.getElementById('update-game');
+  // Local ports are shared by unrelated tools. Never persist a game shell there.
+  const host = location.hostname.toLowerCase();
+  const localHost = host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') ||
+    host === '[::1]' || host === '::1' || /^127\./.test(host) || /^10\./.test(host) ||
+    /^192\.168\./.test(host) || /^172\.(1[6-9]|2\d|3[01])\./.test(host);
+  if (location.protocol === 'http:' || localHost) {
+    status.textContent = '로컬 실행 · 오프라인 저장 안 함';
+    return;
+  }
   if (!('serviceWorker' in navigator) || !window.isSecureContext || location.protocol === 'file:') {
     status.textContent = '현재 주소에서는 온라인으로 플레이합니다.';return;
   }

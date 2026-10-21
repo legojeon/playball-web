@@ -45,3 +45,21 @@ export function bindReleaseInput(field,{onAim,onRelease,onCancel,getOrigin}){
  for(const type of ['pointercancel','lostpointercapture'])field.addEventListener(type,e=>{if(e.pointerId===pointer)cancel();});
  return {cancel};
 }
+
+// Separate from aiming: result-phase gestures never release a batting swing.
+export function bindLookInput(field,{enabled,onLook}){
+ let pointer=null,last=null;
+ function cancel(){const id=pointer;pointer=null;last=null;if(id!==null&&field.hasPointerCapture?.(id))field.releasePointerCapture(id);}
+ field.addEventListener('pointerdown',e=>{
+  if(!enabled()||pointer!==null||e.button!==0||e.isPrimary===false)return;
+  e.preventDefault();pointer=e.pointerId;last={x:e.clientX,y:e.clientY};field.setPointerCapture?.(pointer);
+ });
+ field.addEventListener('pointermove',e=>{
+  if(e.pointerId!==pointer)return;
+  if(!enabled()){cancel();return;}
+  e.preventDefault();onLook(e.clientX-last.x,e.clientY-last.y);last={x:e.clientX,y:e.clientY};
+ });
+ for(const type of ['pointerup','pointercancel','lostpointercapture'])field.addEventListener(type,e=>{if(e.pointerId===pointer)cancel();});
+ field.addEventListener('wheel',e=>{if(!enabled())return;e.preventDefault();const unit=e.deltaMode===1?16:e.deltaMode===2?field.getBoundingClientRect().height:1;onLook(-e.deltaX*unit,-e.deltaY*unit);},{passive:false});
+ return {cancel};
+}

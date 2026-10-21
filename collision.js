@@ -1,8 +1,8 @@
-import {TIMING,timingGrade,meetTarget,MEET} from './contact-window.js?v=90';
+import {TIMING,timingGrade,meetTarget,MEET} from './contact-window.js?v=91';
 import * as T from './vendor/three.module.min.js';
-import {BAT,SWING,swingPose,batRadius,batVelocity} from './swing.js?v=90';
-import {pitchState,CONTACT_Z} from './pitch.js?v=90';
-import {BALL} from './trajectory.js?v=90';
+import {BAT,SWING,swingPose,batRadius,batVelocity} from './swing.js?v=91';
+import {pitchState,CONTACT_Z} from './pitch.js?v=91';
+import {BALL} from './trajectory.js?v=91';
 const V=p=>new T.Vector3(p.x,p.y,p.z),clamp=T.MathUtils.clamp;
 // Never silently move the target. UI rejects points beyond the player's reach.
 export function reachableAim(aim){return !!aim&&Number.isFinite(aim.x)&&Number.isFinite(aim.y)&&aim.x>=-.85&&aim.x<=1.05&&aim.y>=.2&&aim.y<=1.95;}

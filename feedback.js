@@ -13,3 +13,13 @@ export function swingFeedbackOpacity(elapsed){
  if(elapsed<0||elapsed>=2000)return 0;
  return elapsed<1650?1:1-(elapsed-1650)/350;
 }
+
+// Seconds after contact, using the same landing/catch/throw events as rendering.
+export function battedResultDelay(result){
+ const b=result.batted;if(!b)return 0;
+ if(b.caught)return b.fielding?.time??b.animationTime??0;
+ if(result.out)return b.returnAt??b.animationTime??0;
+ if(result.foul)return Math.min(b.firstBounce?.t??Infinity,b.animationTime??0);
+ if(result.bases===4||b.groundRuleDouble)return b.animationTime??0;
+ return b.firstBounce?.t??b.flight??b.fielding?.time??b.animationTime??0;
+}
