@@ -4,12 +4,13 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#c8102e"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="플레이 볼!">
 <meta name="description" content="한 손으로 즐기는 9이닝 1인칭 오프라인 야구. 나만의 응원가로 타석을 채워보세요.">
-<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icons/icon-192.png"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png"><link rel="stylesheet" href="style.css?v=94">
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icons/icon-192.png"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png"><link rel="stylesheet" href="style.css?v=95">
 <title>플레이 볼!</title>
 </head>
 <body>
 <main id="game" class="game">
 <canvas tabindex="0" id="field" aria-label="타자의 눈높이에서 보는 3D 야구장. 누른 채 조준하고 손을 떼면 스윙합니다."></canvas>
+<div id="club-status" class="club-status" hidden><span id="club-badge"></span><span><b id="club-name"></b><small id="club-average"></small></span></div>
 <div class="vignette" aria-hidden="true"></div>
 <header class="hud"><div class="tools"><button id="sound" class="icon" aria-label="응원가 끄기" aria-pressed="true">♪</button><button id="menu" class="icon" aria-label="설정과 기록">☰</button><button id="pause" class="icon" aria-label="일시정지" disabled>Ⅱ</button></div></header>
 <p id="game-state" class="sr-only" role="status" aria-live="polite"></p>
@@ -24,12 +25,13 @@
 </section>
 <div id="fatal" class="fatal" role="alert" hidden></div>
 <dialog id="menu-dialog" aria-labelledby="settings-title"><div class="dialog-head"><h2 id="settings-title">설정</h2><button id="close-menu" class="icon" aria-label="설정 닫기">✕</button></div>
+<p id="team-summary" class="team-summary"></p><button id="change-team" class="menu-button">치는 팀 변경</button>
 <div class="audio-setting"><label class="setting-toggle" for="music-enabled"><span>응원가</span><input id="music-enabled" type="checkbox" role="switch" checked></label><label class="volume-label" for="music-volume">응원가 음량 <output id="music-level" for="music-volume">100%</output></label><input id="music-volume" class="volume-slider" type="range" min="0" max="100" step="1" value="100"></div>
 <div class="audio-setting"><label class="setting-toggle" for="crowd-enabled"><span>관중 소리</span><input id="crowd-enabled" type="checkbox" role="switch" checked></label><label class="volume-label" for="crowd-volume">관중 음량 <output id="crowd-level" for="crowd-volume">100%</output></label><input id="crowd-volume" class="volume-slider" type="range" min="0" max="100" step="1" value="100"></div>
 <button id="music-library" class="menu-button">응원가 가져오기</button><button id="controls-help" class="menu-button">조작방법</button><button id="privacy-help" class="menu-button">개인정보처리방침</button>
-<button id="restart-game" class="menu-button">경기 새로 시작 · 1회부터</button><button id="history" class="menu-button">내 기록</button><p id="offline-status" class="small" role="status">오프라인 준비 중</p><p class="small">플레이 볼! · v94</p></dialog>
+<button id="restart-game" class="menu-button">경기 새로 시작 · 1회부터</button><button id="history" class="menu-button">내 기록</button><p id="offline-status" class="small" role="status">오프라인 준비 중</p><p class="small">플레이 볼! · v95</p></dialog>
 <dialog id="music-dialog" aria-labelledby="music-title"><div class="dialog-head"><h2 id="music-title">나의 응원가</h2><button id="close-music" class="icon" aria-label="응원가 닫기">✕</button></div>
-<p class="small">기기의 오디오 파일을 추가하세요. 파일은 이 기기에만 저장됩니다. 사용할 권한이 있는 음원을 선택해 주세요.</p>
+<p id="music-tutorial-note" class="lesson-note" hidden>‘타석 응원가 추가’ → 음악 파일 선택. 아래 ‘테마 응원가 선택’에서는 시작 화면의 음악도 정할 수 있어요.</p><button id="finish-music-tutorial" class="menu-button" hidden>연습 마치고 경기하기 →</button><p class="small">기기의 오디오 파일을 추가하세요. 파일은 이 기기에만 저장됩니다. 사용할 권한이 있는 음원을 선택해 주세요.</p>
 <h3>타석 응원가</h3><p class="small">응원가 이름이 전광판에 표시됩니다. 연필 버튼으로 바꿀 수 있어요. 앱을 켤 때 순서를 섞고 타석마다 한 곡씩 반복합니다.</p><button id="cheer-add" class="menu-button">타석 응원가 추가</button><input id="cheer-files" type="file" accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac,.flac,.webm" multiple hidden><div id="cheer-list"></div>
 <h3>테마 응원가</h3><p class="small">시작 · 회 종료 화면에서 반복합니다. 새 곡을 추가하면 기존 테마곡이 교체됩니다.</p><button id="anthem-add" class="menu-button">테마 응원가 선택</button><input id="anthem-files" type="file" accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac,.flac,.webm" hidden><div id="anthem-list"></div>
 <p id="music-status" class="small" role="status" aria-live="polite"></p><p class="small">곡당 20MB · 3분, 전체 24곡 · 60MB · 10분까지. 기기에 따라 지원 형식이 다릅니다. 앱 또는 브라우저 데이터 삭제 시 추가한 곡도 지워집니다.</p></dialog>
@@ -40,6 +42,9 @@
 <dialog id="records"><div class="dialog-head"><h2>나의 기록</h2><button id="close-records" class="icon" aria-label="기록 닫기">✕</button></div><div id="record-list"></div><p class="small">9회 완주 경기 최근 10개 · 진행 중인 경기는 자동 저장</p></dialog>
 
 
+<dialog id="team-dialog" aria-labelledby="team-dialog-title"><div class="dialog-head"><h2 id="team-dialog-title">어느 팀으로 칠까요?</h2><button id="close-team" class="icon" aria-label="팀 선택 닫기">✕</button></div><p class="team-intro">선택한 팀의 색으로 타석에 서세요.</p><div id="team-options" class="team-options" aria-label="치는 팀 선택"></div><p id="team-reset-note" class="small">팀을 변경하면 누적 팀 타율이 초기화됩니다. 경기 기록과 응원가는 유지됩니다.</p><button id="confirm-team" class="menu-button team-confirm" disabled>이 팀으로 시작</button></dialog>
+<dialog id="tutorial-choice" aria-labelledby="tutorial-choice-title"><div class="eyebrow">첫 타석 준비</div><h2 id="tutorial-choice-title">짧게 연습해 볼까요?</h2><p>타격 한 번, 주루 중 둘러보기, 응원가 추가 방법까지. 연습 기록은 팀 타율에 포함되지 않아요.</p><button id="tutorial-start" class="menu-button team-confirm">타격 연습하기 →</button><button id="tutorial-skip" class="menu-button">바로 경기하기</button></dialog>
+<section id="tutorial-card" class="tutorial-card" hidden aria-label="첫 타석 연습"><span id="tutorial-count"></span><h2 id="tutorial-title"></h2><p id="tutorial-text"></p><button id="tutorial-next" hidden disabled>둘러봤어요 · 계속 달리기 →</button><button id="tutorial-music" hidden>응원가 설정 열기</button><button id="tutorial-finish" hidden>나중에 추가하고 경기하기 →</button></section>
 </main>
-<script src="rules.js?v=94"></script><script type="module" src="game.js?v=94"></script><script src="pwa.js?v=94"></script>
+<script src="rules.js?v=95"></script><script type="module" src="game.js?v=95"></script><script src="pwa.js?v=95"></script>
 </body></html>

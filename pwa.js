@@ -17,7 +17,7 @@
   let gameStarted=false;
   const overlay=document.getElementById('overlay');
   // Lock updates before the async start/resume handler can begin loading a game.
-  for(const id of ['start','resume-game','restart-game']){
+  for(const id of ['start','resume-game','restart-game','confirm-team','tutorial-start','tutorial-skip']){
     document.getElementById(id)?.addEventListener?.('click',()=>{gameStarted=true;},{capture:true});
   }
   const canApplyUpdate=()=>!gameStarted&&!overlay.hidden;

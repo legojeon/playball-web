@@ -1,24 +1,24 @@
-import {followAim} from './contact-window.js?v=94';
+import {followAim} from './contact-window.js?v=95';
 import * as T from './vendor/three.module.min.js';
-import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=94';
-import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=94';
-import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=94';
-import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=94';
-import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=94';
-import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition} from './fielding.js?v=94';
-import {sampleTrajectory} from './trajectory.js?v=94';
-export {BASES} from './field.js?v=94';
-import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=94';
+import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=95';
+import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=95';
+import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=95';
+import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=95';
+import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=95';
+import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition} from './fielding.js?v=95';
+import {sampleTrajectory} from './trajectory.js?v=95';
+export {BASES} from './field.js?v=95';
+import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=95';
 const V=(x,y,z)=>new T.Vector3(x,y,z);
 const stand=n=>[BASES[n][0]+(n===2?1.8:n===1?.5:-.5),.04,BASES[n][2]-.25];
 const mat=(color,extra={})=>new T.MeshStandardMaterial({color,roughness:.9,...extra});
 export const STADIUM_TOUR={orbit:8000,settle:1600,duration:9600};
 // CSS-pixel readability for batted/returned balls; physics and pitched-ball size
 // remain unchanged. Limit world enlargement and ease it in after impact.
-export const BATTED_BALL_VIEW={nearScale:1.35,minDiameter:4.8,farDiameter:3.4,maxScale:18,easeMs:180};
+export const BATTED_BALL_VIEW={nearScale:1.35,minDiameter:4.8,farDiameter:2.2,maxScale:12,easeMs:180};
 export function battedBallScale(depth,height,fov){
  const diameter=DISPLAY_BALL_RADIUS*height/(Math.max(.1,depth)*Math.tan(fov*Math.PI/360));
- const minimum=T.MathUtils.lerp(BATTED_BALL_VIEW.minDiameter,BATTED_BALL_VIEW.farDiameter,T.MathUtils.smoothstep(depth,25,100));
+ const minimum=T.MathUtils.lerp(BATTED_BALL_VIEW.minDiameter,BATTED_BALL_VIEW.farDiameter,T.MathUtils.smoothstep(depth,20,85));
  return T.MathUtils.clamp(minimum/diameter,BATTED_BALL_VIEW.nearScale,BATTED_BALL_VIEW.maxScale);
 }
 export class Stadium {
@@ -30,6 +30,7 @@ export class Stadium {
   this.renderer.outputColorSpace=T.SRGBColorSpace;this.renderer.toneMapping=T.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.15;
   this.scene.add(new T.HemisphereLight('#f2f3de','#577450',2.3));const sun=new T.DirectionalLight('#ffe4b9',2.8);sun.position.set(-30,60,-10);this.scene.add(sun);
   this.materials={grass:mat('#538769'),dirt:mat('#bd9473'),line:mat('#f2ebcf'),jersey:mat('#ecebde'),helmet:mat('#243e51'),skin:mat('#c79975'),pants:mat('#dddcca'),shoe:mat('#24383b'),runner:mat('#c8323b')};
+  this.materials.runnerHelmet=this.materials.helmet.clone();
   this.makeField();this.makeStadium();this.makeBackStands();this.pitcher=this.makePlayer(false);this.pitcher.position.set(0,.23,18.44);this.pitcher.rotation.y=Math.PI;this.pitcher.scale.setScalar(1.15);this.scene.add(this.pitcher);
   this.pitcherFootShadows=[0,1].map(()=>{const m=this.mesh(new T.CircleGeometry(.18,18),this.shadowMat.clone());m.rotation.x=-Math.PI/2;return m;});
   this.fielders=[];for(const [x,z] of FIELDERS){const p=this.makePlayer(false);p.position.set(x,0,z);p.rotation.y=Math.PI;this.scene.add(p);this.fielders.push(p);}
@@ -118,9 +119,9 @@ export class Stadium {
  }
  updateScoreboard(state){
   if(!this.scoreboard)return;
-  const {canvas,texture}=this.scoreboard,key=JSON.stringify([state.inning||1,state.runs,state.balls,state.strikes,state.outs,...state.bases,state.batterName||'']);if(this.scoreboard.key===key)return;this.scoreboard.key=key;
+  const {canvas,texture}=this.scoreboard,key=JSON.stringify([state.inning||1,state.runs,state.balls,state.strikes,state.outs,...state.bases,state.batterName||'',state.teamName||'',state.average||'']);if(this.scoreboard.key===key)return;this.scoreboard.key=key;
   const c=canvas.getContext('2d'),text=(str,x,y,size,color='#ffffff',align='left')=>{c.fillStyle=color;c.font=`bold ${size}px sans-serif`;c.textAlign=align;c.textBaseline='middle';c.fillText(str,x,y);};
-  c.fillStyle='#251b1e';c.fillRect(0,0,2048,850);c.fillStyle='#c8102e';c.fillRect(0,0,2048,145);text('PLAY BALL!',1024,74,92,'#ffffff','center');
+  c.fillStyle='#251b1e';c.fillRect(0,0,2048,850);c.fillStyle='#c8102e';c.fillRect(0,0,2048,145);text(state.teamName?`${state.teamName}  ·  ${state.average}`:'PLAY BALL!',1024,74,state.teamName?66:92,'#ffffff','center');
   // Familiar scoreboard labels with plain numerals; player gets a dedicated strip.
   text('INNING',330,235,54,'#d9b9c0','center');text(String(state.inning||1),330,340,154,'#ffffff','center');
   text('RUNS',330,480,54,'#d9b9c0','center');
@@ -189,7 +190,7 @@ export class Stadium {
    for(const x of [-DUGOUT.length/2,DUGOUT.length/2])this.box(.25,DUGOUT.height,DUGOUT.depth,dark,x,DUGOUT.height/2,0,g);
    this.box(DUGOUT.length-1,.25,.65,mat('#778879'),0,.55,1.25,g);
    const home=side<0;
-   this.stadiumSign(home?'HOME TEAM':'AWAY TEAM',DUGOUT.length-1,.6,0,DUGOUT.height+.13,-DUGOUT.depth/2-.02,0,'#fff3dd',home?'#a2323b':'#243e51',g);
+   const sign=this.stadiumSign(home?'HOME TEAM':'AWAY TEAM',DUGOUT.length-1,.6,0,DUGOUT.height+.13,-DUGOUT.depth/2-.02,0,'#fff3dd',home?'#a2323b':'#243e51',g);if(home)this.homeDugoutSign=sign;
    this.populateDugout(g,home);
   }
  }
@@ -223,20 +224,26 @@ export class Stadium {
   }
   group.add(roster);
  }
+ setTeam(team){
+  this.materials.runner.color.set(team?.primary||'#c8323b');
+  this.materials.runnerHelmet.color.set(team?.secondary||'#243e51');
+  const texture=this.homeDugoutSign?.material.map,canvas=texture?.image;
+  if(canvas){const c=canvas.getContext('2d');c.fillStyle=team?.primary||'#a2323b';c.fillRect(0,0,canvas.width,canvas.height);c.fillStyle='#ffffff';c.font='bold 80px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText(team?.name||'HOME TEAM',canvas.width/2,canvas.height/2,canvas.width-50);texture.needsUpdate=true;}
+ }
  makePlayer(runner){
-  const m=this.materials,p=new T.Group();const jersey=runner?m.runner:m.jersey;
+  const m=this.materials,p=new T.Group();const jersey=runner?m.runner:m.jersey,helmet=runner?(m.runnerHelmet||m.helmet):m.helmet;
   const torso=new T.Group();torso.position.y=.82;p.add(torso);
   const hips=new T.Group();hips.position.y=.79;p.add(hips);
   const shirt=this.mesh(new T.CylinderGeometry(.23,.19,.58,10),jersey,0,.24,0,torso);shirt.scale.z=.70;
-  this.box(.39,.045,.25,m.helmet,0,-.02,0,torso);
+  this.box(.39,.045,.25,helmet,0,-.02,0,torso);
   // The shirt front and shoulder width make the trunk's side-on rotation readable.
-  for(let i=0;i<3;i++)this.mesh(new T.SphereGeometry(.016,6,5),m.helmet,0,.16+i*.1,.154,torso);
-  this.box(.12,.045,.018,m.helmet,.1,.34,.16,torso);
+  for(let i=0;i<3;i++)this.mesh(new T.SphereGeometry(.016,6,5),helmet,0,.16+i*.1,.154,torso);
+  this.box(.12,.045,.018,helmet,.1,.34,.16,torso);
   this.mesh(new T.CylinderGeometry(.075,.09,.14,8),m.skin,0,.56,0,torso);
   const head=new T.Group();head.position.y=.75;torso.add(head);
   this.mesh(new T.SphereGeometry(.17,12,8),m.skin,0,0,0,head);
-  this.mesh(new T.SphereGeometry(.183,12,8,0,Math.PI*2,0,Math.PI/2),m.helmet,0,.07,0,head);
-  this.box(.27,.04,.19,m.helmet,0,.07,.16,head);
+  this.mesh(new T.SphereGeometry(.183,12,8,0,Math.PI*2,0,Math.PI/2),helmet,0,.07,0,head);
+  this.box(.27,.04,.19,helmet,0,.07,.16,head);
   const limbs=[],elbows=[],knees=[],hands=[];
   for(const side of [-1,1]){
    const leg=new T.Group();leg.position.set(side*.105,0,0);hips.add(leg);
