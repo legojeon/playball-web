@@ -1,7 +1,6 @@
 'use strict';
 (() => {
   const status = document.getElementById('offline-status');
-  const updateButton = document.getElementById('update-game');
   // Local ports are shared by unrelated tools. Never persist a game shell there.
   const host = location.hostname.toLowerCase();
   const localHost = host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') ||
@@ -15,25 +14,24 @@
     status.textContent = '현재 주소에서는 온라인으로 플레이합니다.';return;
   }
   let refreshing=false;
+  let gameStarted=false;
+  const overlay=document.getElementById('overlay');
+  // Lock updates before the async start/resume handler can begin loading a game.
+  for(const id of ['start','resume-game','restart-game']){
+    document.getElementById(id)?.addEventListener?.('click',()=>{gameStarted=true;},{capture:true});
+  }
+  const canApplyUpdate=()=>!gameStarted&&!overlay.hidden;
   const hadController=Boolean(navigator.serviceWorker.controller);
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
-    if(hadController&&!refreshing){
-      if(document.getElementById('overlay').hidden){
-        status.textContent='업데이트 준비 완료';updateButton.hidden=false;
-        updateButton.onclick=()=>{refreshing=true;location.reload();};return;
-      }
+    if(hadController&&!refreshing&&canApplyUpdate()){
       refreshing=true;location.reload();
     }
   });
   navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(registration => {
     const refresh=()=>{if(registration.active)status.textContent='오프라인 준비 완료';};
     const waiting=()=>{
-      if(!registration.waiting)return;
-      const apply=()=>registration.waiting?.postMessage({type:'ACTIVATE_UPDATE'});
-      // Only auto-reload on the title/results screen. An active game gets a button.
-      if(!document.getElementById('overlay').hidden){apply();return;}
-      status.textContent='새 버전 준비 완료';updateButton.hidden=false;
-      updateButton.onclick=()=>{window.dispatchEvent(new Event('game:pause'));apply();};
+      // Apply on opening the game. Once play starts, leave the update for next time.
+      if(registration.waiting&&canApplyUpdate())registration.waiting.postMessage({type:'ACTIVATE_UPDATE'});
     };
     refresh();navigator.serviceWorker.ready.then(refresh);waiting();
     registration.addEventListener('updatefound',()=>{
