@@ -47,3 +47,5 @@ dialog{background:#fff;color:var(--ink);border:1px solid #f0d6de;box-shadow:0 20
 #music-name{display:block;box-sizing:border-box;width:100%;margin-top:10px;padding:12px;border:1px solid #d9bbc3;border-radius:10px;background:#fff;color:#321c24;font:inherit;font-size:16px}#music-rename-dialog label{font-size:13px}.rename-actions{display:flex;gap:10px}.rename-actions button{text-align:center}#music-rename-status{color:#a30b28;overflow-wrap:anywhere}
 
 #privacy-dialog{width:calc(100% - 24px);max-width:700px;padding:16px}#privacy-dialog iframe{display:block;width:100%;height:65dvh;min-height:280px;border:0;border-radius:12px;background:#fffaf9}
+
+#skip-result{position:absolute;right:max(20px,env(safe-area-inset-right));bottom:max(76px,calc(env(safe-area-inset-bottom) + 62px));z-index:4;min-width:84px;min-height:44px;padding:12px 18px;border:1px solid #ffffff88;border-radius:24px;color:#fff;background:#8d1026dc;font-size:12px;font-weight:700;letter-spacing:.8px;backdrop-filter:blur(6px)}

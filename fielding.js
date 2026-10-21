@@ -1,5 +1,5 @@
-import {firstOutOfPlay,inPlayTerritory} from './stadium-layout.js?v=91';
-import {BASES,FIELDERS,FIELD,runnerArrival,fielderTravel} from './field.js?v=91';
+import {firstOutOfPlay,inPlayTerritory} from './stadium-layout.js?v=92';
+import {BASES,FIELDERS,FIELD,runnerArrival,fielderTravel,fielderDistance} from './field.js?v=92';
 function reach(i,p,air){
  const [x,z]=FIELDERS[i],reaction=FIELD.reaction+(i>=4?.12:0),radius=air?1.1:.75;
  return reaction+fielderTravel(Math.max(0,Math.hypot(p.x-x,p.z-z)-radius));
@@ -25,7 +25,7 @@ export function fieldBall(trace){
 }
 const pointAtBase=base=>({x:BASES[base][0],y:1.25,z:BASES[base][2]});
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
-export const defensiveHome=i=>i===7?[0,-2]:FIELDERS[i];
+export const defensiveHome=i=>i===8?[0,18.44]:i===7?[0,-2]:FIELDERS[i];
 const supportArrival=(i,p)=>{const [x,z]=defensiveHome(i);return FIELD.reaction+fielderTravel(Math.hypot(p.x-x,p.z-z));};
 // A shared throw plan drives both the race against the runner and the animation.
 export function throwPlan(fielding,base){
@@ -85,21 +85,72 @@ export function forceRunnerStart(base){return base===0?{x:0,z:0}:{x:BASES[base][
 export function forceRunnerTime(from,to){const a=forceRunnerStart(from),b=pointAtBase(to);return .4+distance(a,b)/FIELD.runnerSpeed;}
 export function groundForcePlay(result,state){
  const b=result.batted,f=b?.fielding;
- if(state.outs>=2||!state.bases[0]||!f||f.caught||b.type!=='ground'||f.fielder>=4||result.foul||result.bases===4||b.groundRuleDouble)return null;
- const plan=throwPlan(f,2),forceAt=plan.arrival,runnerAtSecond=forceRunnerTime(1,2);
- // A tie is safe; never manufacture a force out from a slow pickup/throw.
- if(forceAt>=runnerAtSecond)return null;
- const pivot=plan.receiver,receiver=[0,2,3,1].find(i=>i!==pivot&&i!==f.fielder),from=pointAtBase(2),to=pointAtBase(1),flight=distance(from,to)/FIELD.throwSpeed;
- const release=Math.max(forceAt+.24,supportArrival(receiver,to)-flight),arrival=release+flight;
- const doublePlay=arrival<forceRunnerTime(0,1);
- const assignments=plan.assignments.filter(a=>a.fielder!==receiver);assignments.push({fielder:receiver,point:to,role:'receive'});
- const throws={...plan,target:to,receiver,relay:pivot,assignments,legs:[...plan.legs,{from,to,release,arrival,receiver}],arrival};
- const runners=[];
- for(let base=1;base<=3;base++)if(state.bases[base-1]){
-  const forced=state.bases.slice(0,base).every(Boolean),to=forced?base+1:base;
-  runners.push({from:base,to,out:base===1,outAt:base===1?forceAt:null,arrival:to===base?0:forceRunnerTime(base,to)});
+ if(state.outs>=3||!state.bases[0]||!f||f.caught||b.type!=='ground'||f.fielder>=4||result.foul||result.bases===4||b.groundRuleDouble)return null;
+ // Compare real throw/receiver arrival against each forced runner. Prefer the
+ // quickest sure out, breaking close choices toward the lead runner.
+ const choices=[];
+ for(let base=2;base<=4;base++){
+  if(!state.bases.slice(0,base-1).every(Boolean))continue;
+  const plan=throwPlan(f,base);
+  if(plan.arrival>=forceRunnerTime(base-1,base))continue;
+  const receiver=[0,2,3,1].find(i=>i!==plan.receiver&&i!==f.fielder),from=pointAtBase(base),to=pointAtBase(1),flight=distance(from,to)/FIELD.throwSpeed;
+  const release=Math.max(plan.arrival+.24,supportArrival(receiver,to)-flight),arrival=release+flight;
+  choices.push({base,plan,second:{from,to,release,arrival,receiver},doublePlay:state.outs<2&&arrival<forceRunnerTime(0,1)});
  }
- runners.push({from:0,to:1,out:doublePlay,outAt:doublePlay?arrival:null,arrival:forceRunnerTime(0,1)});
- return {outs:doublePlay?2:1,forceAt,finishAt:arrival,throwPlan:throws,runners,doublePlay,
-  label:doublePlay?'DOUBLE PLAY':"FIELDER’S CHOICE",detail:doublePlay?'2루 포스 아웃 → 1루 아웃 · 병살':'2루 포스 아웃 · 타자는 1루 세이프'};
+ choices.sort((a,b)=>Number(b.doublePlay)-Number(a.doublePlay)||(a.plan.arrival-a.base*.08)-(b.plan.arrival-b.base*.08));
+ if(!choices.length)return null;
+ // With no outs and the bases loaded, stop the run at home when possible.
+ const selected=state.outs===0?choices.find(c=>c.base===4)??choices[0]:choices[0];
+ const {base,plan}=selected,forceAt=plan.arrival,pivot=plan.receiver;
+ let throws=plan,doublePlay=false;
+ if(state.outs<2){
+  const {from,to,release,arrival,receiver}=selected.second;
+  doublePlay=arrival<forceRunnerTime(0,1);
+  const assignments=plan.assignments.filter(a=>a.fielder!==receiver);assignments.push({fielder:receiver,point:to,role:'receive'});
+  throws={...plan,target:to,receiver,relay:pivot,assignments,legs:[...plan.legs,{from,to,release,arrival,receiver}],arrival};
+ }
+ const runners=[];
+ for(let from=1;from<=3;from++)if(state.bases[from-1]){
+  const forced=state.bases.slice(0,from).every(Boolean),to=forced?from+1:from,out=from===base-1;
+  runners.push({from,to,out,outAt:out?forceAt:null,arrival:to===from?0:forceRunnerTime(from,to)});
+ }
+ runners.push({from:0,to:1,out:doublePlay,outAt:doublePlay?throws.arrival:null,arrival:forceRunnerTime(0,1)});
+ const name=base===4?'홈':`${base}루`;
+ return {outs:doublePlay?2:1,forceBase:base,throwBase:throws===plan?base:1,forceAt,finishAt:throws.arrival,throwPlan:throws,runners,doublePlay,
+  label:doublePlay?'DOUBLE PLAY':state.outs===2?'FORCE OUT':"FIELDER’S CHOICE",detail:doublePlay?`${name} 포스 아웃 → 1루 아웃 · 병살`:`${name} 포스 아웃${state.outs===2?' · 이닝 종료':' · 타자는 1루 세이프'}`};
+}
+
+// All nine defenders have a role. Required receivers retain the exact route
+// used by throwPlan; other players react to contact, then back up the throw.
+export function defenseAssignments(hit){
+ const f=hit.fielding;if(!f)return [];
+ const plan=hit.caught?null:(hit.throwPlan||throwPlan(f,hit.throwBase));
+ const assignments=plan?[...plan.assignments]:[0,1,2,3,7].map(i=>({fielder:i,point:pointAtBase(i===0?1:i===1?3:i===7?4:2),role:'cover'}));
+ if(hit.caught){const middle=assignments.find(a=>a.fielder===(f.point.x<0?2:3));middle.point={x:f.point.x*.35,y:0,z:35+(f.point.z-35)*.3};middle.role='cutoff';}
+ const occupied=new Set([f.fielder,...assignments.map(a=>a.fielder)]),target=plan?.target??pointAtBase(2);
+ const backup=([...Array(7).keys()].filter(i=>i>=4&&i!==f.fielder)).sort((a,b)=>distance({x:FIELDERS[a][0],z:FIELDERS[a][1]},f.point)-distance({x:FIELDERS[b][0],z:FIELDERS[b][1]},f.point))[0];
+ for(const i of [4,5,6,8]){
+  if(occupied.has(i))continue;
+  const [x,z]=defensiveHome(i);let point,next,role;
+  if(i===8){
+   role='backup-base';const d=Math.max(1,distance(f.point,target));
+   point={x:f.point.x*.12,y:0,z:18.44+(f.point.z-18.44)*.12};
+   next={x:target.x+(target.x-f.point.x)/d*6,y:0,z:target.z+(target.z-f.point.z)/d*6};
+  }else if(i===backup){
+   role='backup-ball';const d=Math.max(1,Math.hypot(f.point.x,f.point.z));
+   point={x:f.point.x+f.point.x/d*8,y:0,z:f.point.z+f.point.z/d*8};
+   const radius=Math.hypot(point.x,point.z);if(radius>FIELD.fence-2){point.x*= (FIELD.fence-2)/radius;point.z*= (FIELD.fence-2)/radius;}
+   if(!inPlayTerritory(point))point={x:x+(f.point.x-x)*.7,y:0,z:z+(f.point.z-z)*.7};
+   next={x:point.x+(target.x-point.x)*.24,y:0,z:point.z+(target.z-point.z)*.24};
+  }else{role='shade';point={x:x+(f.point.x-x)*.28,y:0,z:z+(f.point.z-z)*.28};next={x:point.x+(target.x-point.x)*.12,y:0,z:point.z+(target.z-point.z)*.12};}
+  assignments.push({fielder:i,point,next:hit.caught?null:next,role});
+ }
+ return assignments.filter(a=>a.fielder!==f.fielder);
+}
+export function defensePosition(assignment,fielding,t){
+ const [x,z]=defensiveHome(assignment.fielder),start={x,z};
+ const toward=(a,b,seconds)=>{const length=distance(a,b),travel=Math.min(length,fielderDistance(seconds)),u=length?travel/length:1;return {x:a.x+(b.x-a.x)*u,z:a.z+(b.z-a.z)*u,moving:u>0&&u<1,travel};};
+ const switchAt=fielding.time+.25;
+ if(assignment.next&&t>switchAt){const pivot=toward(start,assignment.point,switchAt-FIELD.reaction);const next=toward(pivot,assignment.next,t-switchAt);next.travel+=pivot.travel;return next;}
+ return toward(start,assignment.point,t-FIELD.reaction);
 }

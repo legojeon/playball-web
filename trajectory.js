@@ -1,4 +1,4 @@
-import {FIELD,BASES} from './field.js?v=91';
+import {FIELD,BASES} from './field.js?v=92';
 export const BALL={mass:.145,radius:.0366};
 const AIR=1.2,AREA=Math.PI*BALL.radius**2,K=.5*AIR*AREA/BALL.mass;
 export function sampleTrajectory(samples,time){
