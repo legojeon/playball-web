@@ -1,9 +1,14 @@
-import {TEAMS,findTeam,teamLogo,battingAverage} from './teams.js?v=96';
+import {TEAMS,findTeam,teamLogo,battingAverage,teamTheme} from './teams.js?v=97';
 export function bindClubUI({read,onSelect,onPractice,onSkip,onLookDone,onComplete,onOpen,canSave=()=>true}){
  const $=id=>document.getElementById(id),dialog=$('team-dialog');let chosen=null,first=false;
- const choice=$('tutorial-choice'),card=$('tutorial-card');
+ const choice=$('tutorial-choice'),card=$('tutorial-card');let themedId;
+ function applyTheme(team){
+  if(themedId===(team?.id??null))return;themedId=team?.id??null;
+  const theme=teamTheme(team);for(const [name,color] of Object.entries(theme))document.documentElement.style.setProperty('--theme-'+name.replace(/[A-Z]/g,c=>'-'+c.toLowerCase()),color);
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content',theme.primary);
+ }
  function refresh(club=read()){
-  const team=findTeam(club.teamId),status=$('club-status');status.hidden=!team;
+  const team=findTeam(club.teamId),status=$('club-status');status.hidden=!team;applyTheme(team);
   if(!team)return;
   $('club-badge').innerHTML=teamLogo(team);$('club-name').textContent=team.name;
   $('club-average').textContent='팀 타율 '+battingAverage(club)+(canSave()?'':' · 저장 불가');

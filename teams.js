@@ -36,3 +36,21 @@ export function recordAppearance(club,before,after,eventId){
  if(after.hits===before.hits&&after.outs===before.outs)return club;
  return {...club,atBats:club.atBats+1,hits:club.hits+(after.hits>before.hits?1:0),lastEvent:eventId};
 }
+
+// Shared CSS/canvas palette; keep the club color and derive readable surfaces.
+export function mixColor(color,target,amount){
+ const rgb=hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));
+ const a=rgb(color),b=rgb(target);
+ return '#'+a.map((v,i)=>Math.round(v+(b[i]-v)*amount).toString(16).padStart(2,'0')).join('');
+}
+export function colorContrast(a,b){
+ const luminance=hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);
+ const x=luminance(a),y=luminance(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);
+}
+export function teamTheme(team){
+ const primary=team?.primary||'#c8102e',secondary=team?.secondary||'#17191d',soft=mixColor(primary,'#ffffff',.95);
+ let action=primary;for(let i=0;i<20&&colorContrast(action,soft)<4.5;i++)action=mixColor(action,'#000000',.08);
+ return {primary,secondary,action,onPrimary:colorContrast(primary,'#ffffff')>=4.5?'#ffffff':'#15171b',
+  deep:mixColor(primary,'#000000',.67),dark:mixColor(primary,'#000000',.42),soft,border:mixColor(primary,'#ffffff',.76),
+  ink:mixColor(primary,'#17191d',.82),muted:mixColor(primary,'#60636a',.75),light:mixColor(primary,'#ffffff',.78)};
+}

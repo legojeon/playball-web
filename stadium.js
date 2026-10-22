@@ -1,14 +1,15 @@
-import {followAim} from './contact-window.js?v=96';
+import {teamTheme} from './teams.js?v=97';
+import {followAim} from './contact-window.js?v=97';
 import * as T from './vendor/three.module.min.js';
-import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=96';
-import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=96';
-import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=96';
-import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=96';
-import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=96';
-import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition} from './fielding.js?v=96';
-import {sampleTrajectory} from './trajectory.js?v=96';
-export {BASES} from './field.js?v=96';
-import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=96';
+import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=97';
+import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=97';
+import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=97';
+import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=97';
+import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=97';
+import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition} from './fielding.js?v=97';
+import {sampleTrajectory} from './trajectory.js?v=97';
+export {BASES} from './field.js?v=97';
+import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=97';
 const V=(x,y,z)=>new T.Vector3(x,y,z);
 const stand=n=>[BASES[n][0]+(n===2?1.8:n===1?.5:-.5),.04,BASES[n][2]-.25];
 const mat=(color,extra={})=>new T.MeshStandardMaterial({color,roughness:.9,...extra});
@@ -97,7 +98,7 @@ export class Stadium {
   seats.count=n;fans.count=heads.count=crowd;this.scene.add(seats,fans,heads);
   // Large centre-field board: aligned with home plate and the pitcher.
   const board=new T.Group();board.name='centre-field-scoreboard';board.position.set(0,0,124);this.scene.add(board);
-  this.box(62,27,2,mat('#96363b',{fog:false}),0,25,0,board);
+  this.scoreboardFrame=mat('#96363b',{fog:false});this.box(62,27,2,this.scoreboardFrame,0,25,0,board);
   this.box(60,25,2.1,new T.MeshBasicMaterial({color:'#10232b',fog:false}),0,25,-.12,board);
   for(const x of [-23,23])this.box(1.2,12,1.2,dark,x,6,.4,board);
   this.makeScoreboard(board);
@@ -119,12 +120,13 @@ export class Stadium {
  }
  updateScoreboard(state){
   if(!this.scoreboard)return;
-  const {canvas,texture}=this.scoreboard,key=JSON.stringify([state.inning||1,state.runs,state.balls,state.strikes,state.outs,...state.bases,state.batterName||'',state.teamName||'',state.average||'']);if(this.scoreboard.key===key)return;this.scoreboard.key=key;
+  const theme=this.teamTheme||teamTheme(null);this.scoreboard.state={...state,bases:[...state.bases]};
+  const {canvas,texture}=this.scoreboard,key=JSON.stringify([state.inning||1,state.runs,state.balls,state.strikes,state.outs,...state.bases,state.batterName||'',state.teamName||'',state.average||'',theme.primary]);if(this.scoreboard.key===key)return;this.scoreboard.key=key;
   const c=canvas.getContext('2d'),text=(str,x,y,size,color='#ffffff',align='left')=>{c.fillStyle=color;c.font=`bold ${size}px sans-serif`;c.textAlign=align;c.textBaseline='middle';c.fillText(str,x,y);};
-  c.fillStyle='#251b1e';c.fillRect(0,0,2048,850);c.fillStyle='#c8102e';c.fillRect(0,0,2048,145);text(state.teamName?`${state.teamName}  ·  ${state.average}`:'PLAY BALL!',1024,74,state.teamName?66:92,'#ffffff','center');
+  c.fillStyle=theme.ink;c.fillRect(0,0,2048,850);c.fillStyle=theme.primary;c.fillRect(0,0,2048,145);text(state.teamName?`${state.teamName}  ·  ${state.average}`:'PLAY BALL!',1024,74,state.teamName?66:92,theme.onPrimary,'center');
   // Familiar scoreboard labels with plain numerals; player gets a dedicated strip.
-  text('INNING',330,235,54,'#d9b9c0','center');text(String(state.inning||1),330,340,154,'#ffffff','center');
-  text('RUNS',330,480,54,'#d9b9c0','center');
+  text('INNING',330,235,54,theme.light,'center');text(String(state.inning||1),330,340,154,'#ffffff','center');
+  text('RUNS',330,480,54,theme.light,'center');
   const runsValue=String(state.runs);c.font='bold 190px sans-serif';
   const scoreSize=Math.min(190,190*560/Math.max(1,c.measureText(runsValue).width));
   text(runsValue,330,600,scoreSize,'#ffffff','center');
@@ -136,7 +138,7 @@ export class Stadium {
   c.strokeStyle='#79636b';c.beginPath();c.moveTo(1670,280);c.lineTo(1890,460);c.lineTo(1670,640);c.lineTo(1450,460);c.closePath();c.stroke();
   diamond(1890,460,52,state.bases[0]);diamond(1670,280,52,state.bases[1]);diamond(1450,460,52,state.bases[2]);diamond(1670,640,25,false);
   text('1',1980,460,43,'#ffffff','center');text('2',1670,198,43,'#ffffff','center');text('3',1360,460,43,'#ffffff','center');
-  c.fillStyle='#451d27';c.fillRect(0,720,2048,130);
+  c.fillStyle=theme.deep;c.fillRect(0,720,2048,130);
   if(state.batterName){
    c.font='bold 86px sans-serif';const width=c.measureText(state.batterName).width;
    text(state.batterName,1024,787,Math.min(86,86*1850/Math.max(1,width)),'#ffffff','center');
@@ -146,7 +148,7 @@ export class Stadium {
  makeBackStands(){
   const group=new T.Group();group.name='landers-inspired-infield-bowl';this.scene.add(group);this.backStands=group;
   const sections=bowlSections(),rows=10,columns=10,dummy=new T.Object3D();
-  const concrete=mat('#b1b8ae'),dark=mat('#284b3f'),roofMat=mat('#d2dbd6',{side:T.DoubleSide}),ribbonMat=mat('#a2323b');
+  const concrete=mat('#b1b8ae'),dark=mat('#284b3f'),roofMat=mat('#d2dbd6',{side:T.DoubleSide}),ribbonMat=mat('#a2323b');this.stadiumRibbon=ribbonMat;
   const steps=new T.InstancedMesh(new T.BoxGeometry(1,1,1),concrete,sections.length*rows);
   const seats=new T.InstancedMesh(new T.BoxGeometry(.58,.65,.65),mat('#386a55'),sections.length*rows*columns);
   const fans=new T.InstancedMesh(new T.CylinderGeometry(.17,.22,.52,5),mat('#bc3b43'),sections.length*rows*columns);
@@ -225,10 +227,12 @@ export class Stadium {
   group.add(roster);
  }
  setTeam(team){
+  const theme=this.teamTheme=teamTheme(team);this.scoreboardFrame?.color.set(theme.primary);this.stadiumRibbon?.color.set(theme.primary);
+  if(this.scoreboard?.state)this.updateScoreboard({...this.scoreboard.state,teamName:team?.name||''});
   this.materials.runner.color.set(team?.primary||'#c8323b');
   this.materials.runnerHelmet.color.set(team?.secondary||'#243e51');
   const texture=this.homeDugoutSign?.material.map,canvas=texture?.image;
-  if(canvas){const c=canvas.getContext('2d');c.fillStyle=team?.primary||'#a2323b';c.fillRect(0,0,canvas.width,canvas.height);c.fillStyle='#ffffff';c.font='bold 80px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText(team?.name||'HOME TEAM',canvas.width/2,canvas.height/2,canvas.width-50);texture.needsUpdate=true;}
+  if(canvas){const c=canvas.getContext('2d');c.fillStyle=theme.primary;c.fillRect(0,0,canvas.width,canvas.height);c.fillStyle=theme.onPrimary;c.font='bold 80px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText(team?.name||'HOME TEAM',canvas.width/2,canvas.height/2,canvas.width-50);texture.needsUpdate=true;}
  }
  makePlayer(runner){
   const m=this.materials,p=new T.Group();const jersey=runner?m.runner:m.jersey,helmet=runner?(m.runnerHelmet||m.helmet):m.helmet;

@@ -52,3 +52,20 @@ dialog{background:#fff;color:var(--ink);border:1px solid #f0d6de;box-shadow:0 20
 
 /* The real menu remains the only entry to music settings during the lesson. */
 #tutorial-shade{position:absolute;inset:0;z-index:10;touch-action:none}#tutorial-spotlight{position:absolute;z-index:10;border-radius:50%;box-shadow:0 0 0 200vmax #070c16c9;border:2px solid #fff;pointer-events:none}#tutorial-spotlight svg{position:absolute;top:100%;left:0;width:100%;height:84px;overflow:visible;fill:none;stroke:#fff;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.tutorial-menu-guide .hud{z-index:11}.tutorial-menu-guide .tools>:not(#menu){visibility:hidden}.tutorial-menu-guide #menu{background:#b50e2d;border-color:#fff}.tutorial-card[data-step="music"]{z-index:12;top:max(148px,calc(env(safe-area-inset-top) + 134px));bottom:auto;left:auto;right:16px;width:calc(100% - 32px);max-width:340px;margin:0}.tutorial-target{outline:3px solid #b50e2d;outline-offset:2px;background:#fff1f4}
+
+/* Team colors are shared with the stadium canvas and restored from the club. */
+:root{--theme-primary:#c8102e;--theme-secondary:#17191d;--theme-action:#c8102e;--theme-on-primary:#fff;--theme-deep:#42050f;--theme-dark:#74091b;--theme-soft:#fcf3f5;--theme-border:#f2c6cd;--theme-ink:#37171f;--theme-muted:#7a4e5b;--theme-light:#f3cad1;--ink:var(--theme-ink);--muted:var(--theme-muted);background:var(--theme-deep)}
+button:focus-visible,a:focus-visible,input:focus-visible{outline-color:var(--theme-action)}
+.overlay{background:linear-gradient(105deg,color-mix(in srgb,var(--theme-deep) 96%,transparent) 0%,color-mix(in srgb,var(--theme-dark) 85%,transparent) 48%,color-mix(in srgb,var(--theme-deep) 32%,transparent) 100%)}
+.primary{color:var(--theme-action)}.primary:active{background:var(--theme-soft)}.eyebrow,.intro>.small{color:var(--theme-light)}
+.icon{background:color-mix(in srgb,var(--theme-primary) 94%,transparent);color:var(--theme-on-primary)}
+.vignette{background:linear-gradient(color-mix(in srgb,var(--theme-deep) 27%,transparent),transparent 18%,transparent 80%,color-mix(in srgb,var(--theme-deep) 33%,transparent))}
+dialog{border-color:var(--theme-border)}dialog::backdrop{background:color-mix(in srgb,var(--theme-deep) 60%,transparent)}
+.dialog-head h2,a,.record b,#music-rename-status{color:var(--theme-action)}dialog p{color:var(--theme-ink)}
+.dialog-head .icon,.menu-button,.music-row button{background:var(--theme-soft);color:var(--theme-action);border-color:var(--theme-border)}
+.record,.audio-setting,.music-row,.team-summary{border-bottom-color:var(--theme-border)}.volume-label{color:var(--theme-muted)}
+.setting-toggle input,.volume-slider{accent-color:var(--theme-action)}#music-name{color:var(--theme-ink);border-color:var(--theme-border)}
+.team-confirm,.tutorial-card button,.tutorial-menu-guide #menu{background:var(--theme-primary);color:var(--theme-on-primary);border-color:var(--theme-primary)}
+.tutorial-card{background:var(--theme-soft);color:var(--theme-ink)}.tutorial-card>span,#tutorial-choice .eyebrow{color:var(--theme-action)}
+.lesson-note,.tutorial-target{background:var(--theme-soft);border-color:var(--theme-action);outline-color:var(--theme-action)}
+#skip-tour,#skip-result{background:color-mix(in srgb,var(--theme-primary) 94%,transparent);color:var(--theme-on-primary)}.fatal{background:var(--theme-deep)}
