@@ -1,6 +1,6 @@
 // Shared rendered/physical boundary. Photo-based, not a surveyed replica.
 // The fair-field fence retains FIELD dimensions.
-import {FIELD} from './field.js?v=97';
+import {FIELD} from './field.js?v=98';
 const pole=FIELD.fence/Math.sqrt(2);
 const half=[[pole,pole],[65,51],[45,27],[27,9],[16,-7],[8,-15],[0,-17]];
 export const FOUL_BOUNDARY=[...half,...half.slice(0,-1).reverse().map(([x,z])=>[-x,z])];

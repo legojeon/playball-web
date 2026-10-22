@@ -1,17 +1,17 @@
-import {cleanClub,selectTeam,findTeam,battingAverage,recordAppearance} from './teams.js?v=97';
-import {bindClubUI} from './club-ui.js?v=97';
-import {tutorialHit,tutorialPitch} from './tutorial.js?v=97';
-import {bindMusicMenu} from './music-menu.js?v=97';
-import {readProgress,makeProgress} from './progress.js?v=97';
-import {Stadium,STADIUM_TOUR} from './stadium.js?v=97';
-import {generatePitch,takenPitch,CONTACT_Z,ZONE,canTakePitch,missCallTime,canResolvePending} from './pitch.js?v=97';
-import {contact} from './batting.js?v=97';
-import {bindReleaseInput,bindLookInput,inputTime} from './input.js?v=97';
-import {reachableAim} from './collision.js?v=97';
-import {SWING} from './swing.js?v=97';
-import {SWING_FEEDBACK_MS,PITCH_FEEDBACK_MS,battedResultDelay} from './feedback.js?v=97';
-import {groundForcePlay} from './fielding.js?v=97';
-import {GameAudio} from './audio.js?v=97';
+import {cleanClub,selectTeam,findTeam,battingAverage,recordAppearance} from './teams.js?v=98';
+import {bindClubUI} from './club-ui.js?v=98';
+import {tutorialHit,tutorialPitch} from './tutorial.js?v=98';
+import {bindMusicMenu} from './music-menu.js?v=98';
+import {readProgress,makeProgress} from './progress.js?v=98';
+import {Stadium,STADIUM_TOUR} from './stadium.js?v=98';
+import {generatePitch,takenPitch,CONTACT_Z,ZONE,canTakePitch,missCallTime,canResolvePending} from './pitch.js?v=98';
+import {contact} from './batting.js?v=98';
+import {bindReleaseInput,bindLookInput,inputTime} from './input.js?v=98';
+import {reachableAim} from './collision.js?v=98';
+import {SWING} from './swing.js?v=98';
+import {SWING_FEEDBACK_MS,PITCH_FEEDBACK_MS,battedResultDelay} from './feedback.js?v=98';
+import {groundForcePlay} from './fielding.js?v=98';
+import {GameAudio} from './audio.js?v=98';
 const $=id=>document.getElementById(id),R=window.BaseballRules;
 let callUntil=0,battedInfoUntil=0,pitchInfoUntil=0,pendingResult=null,skipAfter=Infinity;
 let scene,state=R.initial(),phase='title',paused=false,pitch=null,due=0,swingAt=-1e6,saved=false,nextPhase='ready';
@@ -61,7 +61,7 @@ function update(){
  const runners=shown.bases.map((on,i)=>on?`${i+1}루`:'').filter(Boolean).join(' · ')||'주자 없음';
  $('game-state').textContent=`${shown.inning}회 · 누적 ${shown.runs}점 · 볼 ${shown.balls} · 스트라이크 ${shown.strikes} · 아웃 ${shown.outs} · ${runners}${batterName?` · 타석 ${batterName}`:''}`;
  $('menu').disabled=Boolean(tutorial&&tutorial.stage!=='music');
- $('pause').disabled=Boolean(tutorial&&['look','music'].includes(tutorial.stage))||!['intro','stance','windup','pitch','result','ready'].includes(phase);
+ $('pause').disabled=Boolean(tutorial&&['release','look','music'].includes(tutorial.stage))||!['intro','stance','windup','pitch','result','ready'].includes(phase);
  $('stadium-tour').hidden=phase!=='intro';$('skip-tour').disabled=paused;$('game').classList.toggle('touring',phase==='intro');
  $('ready-prompt').hidden=tutorial?true:phase!=='ready'&&!paused;
  $('ready-prompt').textContent=paused?'일시정지 · ▶로 계속':'화면을 눌러 준비';
@@ -169,7 +169,9 @@ function skipResult(){
 }
 let pointerPosition=null;
 function swing(x,y,inputAt=performance.now()){
- if(tutorial?.stage==='bat'&&!paused&&['windup','pitch'].includes(phase)&&!pitch.swung){
+ if(tutorial?.stage==='aim')return false;
+ if(tutorial?.stage==='release'&&phase==='pitch'&&!pitch.swung){
+  tutorial.stage='bat';clubUI.step(null);setPause(false);
   const time=now(),impactAt=Math.max(time,pitch.start+pitch.duration);
   pitch.swung=true;scene.setSwingAim({x:0,y:1.02,z:CONTACT_Z},0);scene.clearSwingMark();clearAim();
   swingAt=impactAt-SWING.impactDelay;pitch.pending={result:tutorialHit(),error:0,at:impactAt,ballError:0};return true;
@@ -221,10 +223,10 @@ function finish(){
  $('again').onclick=()=>start();$('results-history').onclick=showHistory;$('overlay').hidden=false;update();
 }
 
-function setPause(value){
- if(tutorial&&['look','music'].includes(tutorial.stage)&&!value)return;
+function setPause(value,keepAim=false){
+ if(tutorial&&['release','look','music'].includes(tutorial.stage)&&!value)return;
  if(!['intro','stance','ready','windup','pitch','result'].includes(phase)||paused===value)return;
- if(value){lookInput.cancel();releaseInput.cancel();keyHeld=false;clearAim();freeze=now();pauseStart=performance.now();paused=true;sound.suspend();}else{pausedTotal+=performance.now()-pauseStart;paused=false;sound.resume();}
+ if(value){lookInput.cancel();if(!keepAim){releaseInput.cancel();keyHeld=false;clearAim();}freeze=now();pauseStart=performance.now();paused=true;sound.suspend();}else{pausedTotal+=performance.now()-pauseStart;paused=false;sound.resume();}
  $('pause').textContent=paused?'▶':'Ⅱ';$('pause').setAttribute('aria-label',paused?'계속하기':'일시정지');update();
 }
 function showHistory(){
@@ -267,7 +269,7 @@ $('skip-tour').onclick=()=>{if(phase==='intro'&&!paused)enterStance(now());};
 const field=$('field');
 function clearAim(){scene?.setAimPreview(null);}
 function aimHold(x,y){
- if(paused||!['ready','windup','pitch'].includes(phase)||phase==='pitch'&&pitch?.swung)return false;
+ if((paused&&tutorial?.stage!=='release')||!['ready','windup','pitch'].includes(phase)||phase==='pitch'&&pitch?.swung)return false;
  if(phase==='ready')windup();
  const aim=scene.aimAt(x,y);pointerPosition={x,y};
  scene.setAimPreview(reachableAim(scene.assistAim(aim))?aim:null);
@@ -292,11 +294,11 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)setPause(tr
 $('field').addEventListener('webglcontextlost',e=>{e.preventDefault();setPause(true);$('fatal').hidden=false;$('fatal').textContent='그래픽 연결이 중단되었습니다. 페이지를 다시 열어주세요. 저장한 기록은 유지됩니다.';});
 async function beginTutorial(){
  if(tutorial)return;
- tutorial={stage:'bat',lookAt:Infinity,lookDistance:0,returnToResults:phase==='over',returnState:state,returnSaved:saved};phase='loading';await sound.unlock();
+ tutorial={stage:'aim',lookAt:Infinity,lookDistance:0,returnToResults:phase==='over',returnState:state,returnSaved:saved};phase='loading';await sound.unlock();
  if(paused){pausedTotal+=performance.now()-pauseStart;paused=false;sound.resume();}
  sound.stopCheer();$('pause').textContent='Ⅱ';$('pause').setAttribute('aria-label','일시정지');
  state=R.initial();pendingResult=null;scene.clearDepartures();scene.setBases(state.bases);scene.beginStance(now()-2200);
- $('overlay').hidden=true;enterReady();clubUI.step('bat');
+ $('overlay').hidden=true;enterReady();clubUI.step('aim');
 }
 function completeTutorial(){
  const practice=tutorial;tutorial=null;club={...club,tutorialDone:true};persist();clubUI.step(null);
@@ -313,5 +315,8 @@ function setupClub(){
  window.addEventListener('storage',event=>{if(event.key!==KEY||!event.newValue)return;try{club=cleanClub(JSON.parse(event.newValue).club);scene.setTeam(findTeam(club.teamId));clubUI.refresh();}catch{}});
 }
 try{scene=new Stadium($('field'),{onFieldCatch:distance=>sound.playFieldCatch(distance)});$('start').disabled=false;showStartChoices();update();unlockMenuMusic();setupClub();
- const frame=()=>{const time=now();if(tutorial?.stage==='bat'&&phase==='result'&&!pendingResult&&time>=tutorial.lookAt){tutorial.stage='look';setPause(true);clubUI.step('look');}if(!paused){if(phase==='intro'&&time>=due){enterStance(time);}else if(phase==='stance'&&time>=due){enterReady();}else if(phase==='windup'&&time>=pitch.start)release();else if(phase==='pitch'&&canResolvePending(pitch,time)){const {result,error,at}=pitch.pending;delete pitch.pending;resolve(result,error,time);}else if(phase==='pitch'&&canTakePitch(pitch,time)){if(tutorial)enterReady();else resolve(takenPitch(pitch));}else if(phase==='result'&&!pendingResult&&time>=due){finishResult(time);}}$('skip-result').hidden=!canSkipResult(time);$('pitch-result').hidden=phase!=='result'||time>=pitchInfoUntil;$('feedback').hidden=!$('call').textContent||time>=callUntil;$('batted-stats').hidden=phase!=='result'||time>=battedInfoUntil;scene.draw({time,phase,pitch,swingAt,paused});if(!paused)announceResult(time);requestAnimationFrame(frame);};requestAnimationFrame(frame);
+ const frame=()=>{let time=now();
+  // Release before clamping so even a delayed windup frame stops before contact.
+  if(tutorial?.stage==='aim'&&phase==='windup'&&!paused&&time>=pitch.start)release();
+  if(tutorial?.stage==='aim'&&phase==='pitch'&&!paused){const stop=pitch.start+pitch.duration-120;if(time>=stop){pausedTotal+=time-stop;time=stop;tutorial.stage='release';setPause(true,true);clubUI.step('release');}}if(tutorial?.stage==='bat'&&phase==='result'&&!pendingResult&&time>=tutorial.lookAt){tutorial.stage='look';setPause(true);clubUI.step('look');}if(!paused){if(phase==='intro'&&time>=due){enterStance(time);}else if(phase==='stance'&&time>=due){enterReady();}else if(phase==='windup'&&time>=pitch.start)release();else if(phase==='pitch'&&canResolvePending(pitch,time)){const {result,error,at}=pitch.pending;delete pitch.pending;resolve(result,error,time);}else if(phase==='pitch'&&canTakePitch(pitch,time)){if(tutorial)enterReady();else resolve(takenPitch(pitch));}else if(phase==='result'&&!pendingResult&&time>=due){finishResult(time);}}$('skip-result').hidden=!canSkipResult(time);$('pitch-result').hidden=phase!=='result'||time>=pitchInfoUntil;$('feedback').hidden=!$('call').textContent||time>=callUntil;$('batted-stats').hidden=phase!=='result'||time>=battedInfoUntil;scene.draw({time,phase,pitch,swingAt,paused});if(!paused)announceResult(time);requestAnimationFrame(frame);};requestAnimationFrame(frame);
 }catch(error){$('fatal').hidden=false;$('fatal').textContent='3D 야구장을 열지 못했습니다. 최신 Safari 또는 Chrome에서 다시 열어주세요.';console.error(error);}

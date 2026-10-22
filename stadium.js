@@ -1,25 +1,25 @@
-import {teamTheme} from './teams.js?v=97';
-import {followAim} from './contact-window.js?v=97';
+import {teamTheme} from './teams.js?v=98';
+import {followAim} from './contact-window.js?v=98';
 import * as T from './vendor/three.module.min.js';
-import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=97';
-import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=97';
-import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=97';
-import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=97';
-import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=97';
-import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition} from './fielding.js?v=97';
-import {sampleTrajectory} from './trajectory.js?v=97';
-export {BASES} from './field.js?v=97';
-import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=97';
+import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=98';
+import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=98';
+import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=98';
+import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=98';
+import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=98';
+import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition} from './fielding.js?v=98';
+import {sampleTrajectory} from './trajectory.js?v=98';
+export {BASES} from './field.js?v=98';
+import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=98';
 const V=(x,y,z)=>new T.Vector3(x,y,z);
 const stand=n=>[BASES[n][0]+(n===2?1.8:n===1?.5:-.5),.04,BASES[n][2]-.25];
 const mat=(color,extra={})=>new T.MeshStandardMaterial({color,roughness:.9,...extra});
 export const STADIUM_TOUR={orbit:8000,settle:1600,duration:9600};
 // CSS-pixel readability for batted/returned balls; physics and pitched-ball size
 // remain unchanged. Limit world enlargement and ease it in after impact.
-export const BATTED_BALL_VIEW={nearScale:1.35,minDiameter:4.8,farDiameter:2.2,maxScale:12,easeMs:180};
+export const BATTED_BALL_VIEW={nearScale:1.35,minDiameter:4.8,farDiameter:1.7,maxScale:10,easeMs:180};
 export function battedBallScale(depth,height,fov){
  const diameter=DISPLAY_BALL_RADIUS*height/(Math.max(.1,depth)*Math.tan(fov*Math.PI/360));
- const minimum=T.MathUtils.lerp(BATTED_BALL_VIEW.minDiameter,BATTED_BALL_VIEW.farDiameter,T.MathUtils.smoothstep(depth,20,85));
+ const minimum=T.MathUtils.lerp(BATTED_BALL_VIEW.minDiameter,BATTED_BALL_VIEW.farDiameter,T.MathUtils.smoothstep(depth,18,80));
  return T.MathUtils.clamp(minimum/diameter,BATTED_BALL_VIEW.nearScale,BATTED_BALL_VIEW.maxScale);
 }
 export class Stadium {

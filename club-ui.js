@@ -1,4 +1,4 @@
-import {TEAMS,findTeam,teamLogo,battingAverage,teamTheme} from './teams.js?v=97';
+import {TEAMS,findTeam,teamLogo,battingAverage,teamTheme} from './teams.js?v=98';
 export function bindClubUI({read,onSelect,onPractice,onSkip,onLookDone,onComplete,onOpen,canSave=()=>true}){
  const $=id=>document.getElementById(id),dialog=$('team-dialog');let chosen=null,first=false;
  const choice=$('tutorial-choice'),card=$('tutorial-card');let themedId;
@@ -53,7 +53,7 @@ export function bindClubUI({read,onSelect,onPractice,onSkip,onLookDone,onComplet
   $('menu-tutorial-note').hidden=!menu;$('music-library').classList.toggle('tutorial-target',menu);
   for(const id of ['change-team','controls-help','privacy-help','restart-game','history'])$(id).disabled=menu;
   $('music-tutorial-note').hidden=!files;$('finish-music-tutorial').hidden=!files;
-  const copy={bat:['01 · 타격','공을 향해 조준하고 손을 떼세요','화면을 누른 채 움직여 조준하세요. 공이 다가오면 손을 떼어 스윙하세요. 연습에서는 타이밍이 달라도 안타가 됩니다.'],look:['02 · 둘러보기','화면을 움직여 주변을 둘러보세요','주루를 잠시 멈췄습니다. 화면을 드래그하거나 마우스 휠을 스크롤하세요. 둘러본 뒤 아래 버튼을 눌러 계속 달리세요.'],music:['03 · 응원가','위쪽 ☰ 메뉴를 누르세요','메뉴에서 응원가를 추가할 수 있습니다. 화살표가 가리키는 버튼을 누르세요.']};
+  const copy={aim:['01 · 조준','화면을 눌러 배트를 조준하세요.','화면을 누른 채 손가락이나 마우스를 움직여 조준하세요. 손을 떼지 말고 공을 기다리세요.'],release:['02 · 스윙','손을 떼 배트를 휘두르세요.','공을 잠시 멈췄습니다. 손을 떼면 공이 다시 움직이고 배트를 휘두릅니다. 이미 손을 뗐다면 다시 누른 뒤 떼세요.'],look:['03 · 둘러보기','화면을 움직여 주변을 둘러보세요','주루를 잠시 멈췄습니다. 화면을 드래그하거나 마우스 휠을 스크롤하세요. 둘러본 뒤 아래 버튼을 눌러 계속 달리세요.'],music:['04 · 응원가','위쪽 ☰ 메뉴를 누르세요','메뉴에서 응원가를 추가할 수 있습니다. 화살표가 가리키는 버튼을 누르세요.']};
   if(copy[stage]){const [count,title,text]=copy[stage];$('tutorial-count').textContent=count;$('tutorial-title').textContent=title;$('tutorial-text').textContent=text;}
   if(music)placeSpotlight();
  }
