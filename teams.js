@@ -1,20 +1,21 @@
 // Game palettes and redrawn emblems inspired by the current KBO clubs.
 // Official reference pages and design notes: docs/TEAM-DESIGN.md.
+// Keep stable IDs so the renamed clubs retain existing selections and averages.
 export const TEAMS=[
- {id:'lg',name:'LG 트윈스',short:'TWINS',primary:'#c30452',secondary:'#17191d',mark:'T',motif:'twins'},
- {id:'hanwha',name:'한화 이글스',short:'EAGLES',primary:'#fc4e00',secondary:'#212121',mark:'E',motif:'wings'},
- {id:'ssg',name:'SSG 랜더스',short:'LANDERS',primary:'#ce0e2d',secondary:'#e6c99a',mark:'L',motif:'orbit'},
- {id:'samsung',name:'삼성 라이온즈',short:'LIONS',primary:'#074ca1',secondary:'#c5ced5',mark:'SL',motif:'mane'},
- {id:'nc',name:'NC 다이노스',short:'DINOS',primary:'#315288',secondary:'#c7a079',mark:'NC',motif:'claw'},
- {id:'kt',name:'KT 위즈',short:'WIZ',primary:'#202023',secondary:'#eb1c24',mark:'W',motif:'bolt'},
- {id:'lotte',name:'롯데 자이언츠',short:'GIANTS',primary:'#041e42',secondary:'#d00f31',mark:'G',motif:'ball'},
- {id:'kia',name:'KIA 타이거즈',short:'TIGERS',primary:'#ea0029',secondary:'#06141f',mark:'T',motif:'stripes'},
- {id:'doosan',name:'두산 베어스',short:'BEARS',primary:'#131230',secondary:'#ed1c24',mark:'B',motif:'bear'},
- {id:'kiwoom',name:'키움 히어로즈',short:'HEROES',primary:'#820024',secondary:'#d2ae7c',mark:'H',motif:'hero'}
+ {id:'lg',name:'잠실 비버즈',short:'BEAVERS',primary:'#c30452',secondary:'#17191d',mark:'B',motif:'beaver'},
+ {id:'hanwha',name:'대전 호크스',short:'HAWKS',primary:'#fc4e00',secondary:'#212121',mark:'H',motif:'wings'},
+ {id:'ssg',name:'인천 하운즈',short:'HOUNDS',primary:'#ce0e2d',secondary:'#e6c99a',mark:'H',motif:'hound'},
+ {id:'samsung',name:'대구 퓨마스',short:'PUMAS',primary:'#074ca1',secondary:'#c5ced5',mark:'P',motif:'cat'},
+ {id:'nc',name:'창원 브라키오즈',short:'BRACHIOS',primary:'#315288',secondary:'#c7a079',mark:'B',motif:'dino'},
+ {id:'kt',name:'수원 아울즈',short:'OWLS',primary:'#202023',secondary:'#eb1c24',mark:'O',motif:'owl'},
+ {id:'lotte',name:'부산 시걸즈',short:'SEAGULLS',primary:'#041e42',secondary:'#d00f31',mark:'S',motif:'gull'},
+ {id:'kia',name:'광주 재규어즈',short:'JAGUARS',primary:'#ea0029',secondary:'#06141f',mark:'J',motif:'spots'},
+ {id:'doosan',name:'서울 판다스',short:'PANDAS',primary:'#131230',secondary:'#ed1c24',mark:'P',motif:'panda'},
+ {id:'kiwoom',name:'고척 샤크스',short:'SHARKS',primary:'#820024',secondary:'#d2ae7c',mark:'S',motif:'shark'}
 ];
 export const findTeam=id=>TEAMS.find(team=>team.id===id)||null;
 export function teamLogo(team){
- const motifs={twins:'<path d="M23 20h12v8h-3v15h-6V28h-3zm22 0h12v8h-3v15h-6V28h-3z"/>',wings:'<path d="m12 21 18 5-2 6-14-5zm56 0-18 5 2 6 14-5M17 33l12 3-1 5-9-3m44-5-12 3 1 5 9-3"/>',orbit:'<ellipse cx="40" cy="34" rx="31" ry="12" transform="rotate(-28 40 34)" fill="none" stroke="currentColor" stroke-width="4"/>',mane:'<path d="m40 9 8 7 11-1 1 11 8 8-8 8-1 11-11-1-8 7-8-7-11 1-1-11-8-8 8-8 1-11 11 1z"/>',claw:'<path d="m18 16 10 5-6 17-6 5 4-19m17-12 9 6-6 16-6 4 5-18m17-12 8 7-6 14-6 4 5-17"/>',bolt:'<path d="m45 9-25 27h17l-5 23 29-34H43z"/>',ball:'<circle cx="40" cy="33" r="23" fill="none" stroke="currentColor" stroke-width="4"/><path d="m17 27 11 6-10 9m45-15-11 6 10 9" fill="none" stroke="currentColor" stroke-width="3"/>',stripes:'<path d="m17 18 18 5-4 6-16-5m48-6-18 5 4 6 16-5M19 34l12 3-4 5-10-3m44-5-12 3 4 5 10-3"/>',bear:'<circle cx="23" cy="20" r="9"/><circle cx="57" cy="20" r="9"/><path d="M20 27Q40 13 60 27v18Q40 59 20 45z"/>',hero:'<path d="m40 10 7 15 17 2-13 12 4 17-15-8-15 8 4-17-13-12 17-2z"/>'};
+ const motifs={beaver:'<ellipse cx="40" cy="33" rx="23" ry="21"/><circle cx="22" cy="18" r="6"/><circle cx="58" cy="18" r="6"/><path d="M32 49h16v11H32z" fill="white"/><path d="M40 49v11" stroke="currentColor" stroke-width="2"/>',wings:'<path d="m10 19 22 8-5 8-15-7m58-9-22 8 5 8 15-7M17 35l13 4-3 7-9-4m45-7-13 4 3 7 9-4"/>',hound:'<path d="M21 14 10 30l12 8 4-13m33-11 11 16-12 8-4-13M25 19q15-9 30 0v25L40 56 25 44z"/>',cat:'<path d="m18 12 19 10h6l19-10-4 31-18 14-18-14z"/><path d="m15 40 17 3m33-3-17 3" stroke="currentColor" stroke-width="3"/>',dino:'<path d="M14 47q-4-16 16-21l11 1 3-14q2-8 14-5l9 5-3 8-10-1-1 21-5 9-4 12h-8l1-12-11 1-2 11h-8l2-14z"/>',owl:'<path d="m17 11 13 9q10-5 20 0l13-9-3 33-20 16-20-16z"/><circle cx="29" cy="31" r="10" fill="none" stroke="white" stroke-width="2"/><circle cx="51" cy="31" r="10" fill="none" stroke="white" stroke-width="2"/>',gull:'<path d="M9 24q15-11 31 7 16-18 31-7L49 41l-9 15-9-15z"/>',spots:'<path d="m18 13 17 8h10l17-8-5 31-17 13-17-13z"/><g fill="white"><circle cx="24" cy="27" r="3"/><circle cx="56" cy="27" r="3"/><circle cx="25" cy="43" r="3"/><circle cx="55" cy="43" r="3"/></g>',panda:'<circle cx="23" cy="19" r="10"/><circle cx="57" cy="19" r="10"/><ellipse cx="40" cy="36" rx="23" ry="22"/><ellipse cx="28" cy="30" rx="7" ry="9" fill="white"/><ellipse cx="52" cy="30" rx="7" ry="9" fill="white"/>',shark:'<path d="M14 48q6-16 18-18L47 8l1 20 19 7-17 7-8 15-4-12-14 8z"/>'};
  return `<svg viewBox="0 0 80 84" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><path d="M6 7h68v42L40 78 6 49z" fill="${team.primary}" stroke="${team.secondary}" stroke-width="4"/><g fill="${team.secondary}" color="${team.secondary}">${motifs[team.motif]}</g><text x="40" y="46" fill="white" stroke="${team.primary}" stroke-width="1.3" paint-order="stroke" text-anchor="middle" font-family="Arial,sans-serif" font-style="italic" font-weight="900" font-size="${team.mark.length>1?25:34}">${team.mark}</text><path d="M26 60h28" stroke="white" stroke-width="3"/></svg>`;
 }
 export function cleanClub(value){

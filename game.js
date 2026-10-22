@@ -1,17 +1,17 @@
-import {cleanClub,selectTeam,findTeam,battingAverage,recordAppearance} from './teams.js?v=95';
-import {bindClubUI} from './club-ui.js?v=95';
-import {tutorialHit,tutorialPitch} from './tutorial.js?v=95';
-import {bindMusicMenu} from './music-menu.js?v=95';
-import {readProgress,makeProgress} from './progress.js?v=95';
-import {Stadium,STADIUM_TOUR} from './stadium.js?v=95';
-import {generatePitch,takenPitch,CONTACT_Z,ZONE,canTakePitch,missCallTime,canResolvePending} from './pitch.js?v=95';
-import {contact} from './batting.js?v=95';
-import {bindReleaseInput,bindLookInput,inputTime} from './input.js?v=95';
-import {reachableAim} from './collision.js?v=95';
-import {SWING} from './swing.js?v=95';
-import {SWING_FEEDBACK_MS,PITCH_FEEDBACK_MS,battedResultDelay} from './feedback.js?v=95';
-import {groundForcePlay} from './fielding.js?v=95';
-import {GameAudio} from './audio.js?v=95';
+import {cleanClub,selectTeam,findTeam,battingAverage,recordAppearance} from './teams.js?v=96';
+import {bindClubUI} from './club-ui.js?v=96';
+import {tutorialHit,tutorialPitch} from './tutorial.js?v=96';
+import {bindMusicMenu} from './music-menu.js?v=96';
+import {readProgress,makeProgress} from './progress.js?v=96';
+import {Stadium,STADIUM_TOUR} from './stadium.js?v=96';
+import {generatePitch,takenPitch,CONTACT_Z,ZONE,canTakePitch,missCallTime,canResolvePending} from './pitch.js?v=96';
+import {contact} from './batting.js?v=96';
+import {bindReleaseInput,bindLookInput,inputTime} from './input.js?v=96';
+import {reachableAim} from './collision.js?v=96';
+import {SWING} from './swing.js?v=96';
+import {SWING_FEEDBACK_MS,PITCH_FEEDBACK_MS,battedResultDelay} from './feedback.js?v=96';
+import {groundForcePlay} from './fielding.js?v=96';
+import {GameAudio} from './audio.js?v=96';
 const $=id=>document.getElementById(id),R=window.BaseballRules;
 let callUntil=0,battedInfoUntil=0,pitchInfoUntil=0,pendingResult=null,skipAfter=Infinity;
 let scene,state=R.initial(),phase='title',paused=false,pitch=null,due=0,swingAt=-1e6,saved=false,nextPhase='ready';
@@ -60,7 +60,7 @@ function update(){
  $('sound').textContent=sound.musicEnabled?'♪':'♪̸';$('sound').setAttribute('aria-label',sound.musicEnabled?'응원가 끄기':'응원가 켜기');$('sound').setAttribute('aria-pressed',String(sound.musicEnabled));
  const runners=shown.bases.map((on,i)=>on?`${i+1}루`:'').filter(Boolean).join(' · ')||'주자 없음';
  $('game-state').textContent=`${shown.inning}회 · 누적 ${shown.runs}점 · 볼 ${shown.balls} · 스트라이크 ${shown.strikes} · 아웃 ${shown.outs} · ${runners}${batterName?` · 타석 ${batterName}`:''}`;
- $('menu').disabled=Boolean(tutorial);
+ $('menu').disabled=Boolean(tutorial&&tutorial.stage!=='music');
  $('pause').disabled=Boolean(tutorial&&['look','music'].includes(tutorial.stage))||!['intro','stance','windup','pitch','result','ready'].includes(phase);
  $('stadium-tour').hidden=phase!=='intro';$('skip-tour').disabled=paused;$('game').classList.toggle('touring',phase==='intro');
  $('ready-prompt').hidden=tutorial?true:phase!=='ready'&&!paused;
@@ -236,7 +236,7 @@ function showHistory(){
  $('records').showModal();
 }
 
-bindMusicMenu({sound,onOpen(){setPause(true);$('menu-dialog').close();},onChanged(){if(['title','intro','over'].includes(phase)&&sound.anthemTracks.length&&!sound.anthem)sound.startAnthem();if(paused)sound.suspend();if(phase==='over')finish();else update();}});
+bindMusicMenu({sound,onOpen(){setPause(true);if(tutorial?.stage==='music'){tutorial.musicOpened=true;clubUI.step('music-files');}$('menu-dialog').close();},onChanged(){if(['title','intro','over'].includes(phase)&&sound.anthemTracks.length&&!sound.anthem)sound.startAnthem();if(paused)sound.suspend();if(phase==='over')finish();else update();}});
 function unlockMenuMusic(){
  const refresh=()=>{
   if(sound.context?.state==='running'&&['title','intro','over'].includes(phase)&&sound.anthemTracks.length&&!sound.anthem)sound.startAnthem();
@@ -253,8 +253,10 @@ function unlockMenuMusic(){
 for(const type of ['pointerdown','pointerup','click'])document.addEventListener(type,()=>{if(phase==='title')unlockMenuMusic();});
 document.addEventListener('keydown',()=>{if(phase==='title')unlockMenuMusic();});
 $('start').onclick=()=>start('new');$('resume-game').onclick=()=>start('resume');$('restart-game').onclick=()=>{$('menu-dialog').close();return start('new');};$('history').onclick=()=>{$('menu-dialog').close();showHistory();};$('close-records').onclick=()=>$('records').close();
-$('pause').onclick=()=>setPause(!paused);$('menu').onclick=()=>{setPause(true);$('menu-dialog').showModal();};$('close-menu').onclick=()=>$('menu-dialog').close();
-$('controls-help').onclick=()=>{setPause(true);$('menu-dialog').close();$('controls-dialog').showModal();};$('close-controls').onclick=()=>$('controls-dialog').close();
+$('pause').onclick=()=>setPause(!paused);$('menu').onclick=()=>{setPause(true);if(tutorial?.stage==='music')clubUI.step('music-menu');$('menu-dialog').showModal();};$('close-menu').onclick=()=>$('menu-dialog').close();
+$('controls-help').onclick=()=>{if(tutorial)return;setPause(true);$('menu-dialog').close();return beginTutorial();};
+$('menu-dialog').addEventListener('close',()=>{if(tutorial?.stage==='music'&&!tutorial.musicOpened)clubUI.step('music');});
+$('music-dialog').addEventListener('close',()=>{if(tutorial?.stage==='music'&&tutorial.musicOpened)completeTutorial();});
 $('privacy-help').onclick=()=>{setPause(true);$('menu-dialog').close();$('privacy-dialog').showModal();};$('close-privacy').onclick=()=>$('privacy-dialog').close();
 $('sound').onclick=()=>{const on=sound.toggleMusic();saveSoundPreferences();if(on)unlockMenuMusic();update();};
 $('music-enabled').onchange=()=>{const on=sound.setMusicEnabled($('music-enabled').checked);saveSoundPreferences();if(on)unlockMenuMusic();update();};
@@ -290,13 +292,15 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)setPause(tr
 $('field').addEventListener('webglcontextlost',e=>{e.preventDefault();setPause(true);$('fatal').hidden=false;$('fatal').textContent='그래픽 연결이 중단되었습니다. 페이지를 다시 열어주세요. 저장한 기록은 유지됩니다.';});
 async function beginTutorial(){
  if(tutorial)return;
- tutorial={stage:'bat',lookAt:Infinity,lookDistance:0};phase='loading';await sound.unlock();
- if(paused){pausedTotal+=performance.now()-pauseStart;paused=false;}
+ tutorial={stage:'bat',lookAt:Infinity,lookDistance:0,returnToResults:phase==='over',returnState:state,returnSaved:saved};phase='loading';await sound.unlock();
+ if(paused){pausedTotal+=performance.now()-pauseStart;paused=false;sound.resume();}
+ sound.stopCheer();$('pause').textContent='Ⅱ';$('pause').setAttribute('aria-label','일시정지');
  state=R.initial();pendingResult=null;scene.clearDepartures();scene.setBases(state.bases);scene.beginStance(now()-2200);
  $('overlay').hidden=true;enterReady();clubUI.step('bat');
 }
 function completeTutorial(){
- tutorial=null;club={...club,tutorialDone:true};persist();clubUI.step(null);
+ const practice=tutorial;tutorial=null;club={...club,tutorialDone:true};persist();clubUI.step(null);
+ if(practice?.returnToResults){state=practice.returnState;saved=practice.returnSaved;setPause(false);scene.setBases(state.bases);finish();return;}
  return start(storedProgress?'resume':'new');
 }
 function setupClub(){
@@ -304,7 +308,7 @@ function setupClub(){
  clubUI=bindClubUI({read:()=>club,canSave:()=>storageOK,onSelect:id=>{club=selectTeam(club,id);persist();scene.setTeam(findTeam(id));update();},
   onOpen(){setPause(true);$('menu-dialog').close();},onPractice:beginTutorial,onSkip:completeTutorial,
   onLookDone(){if(tutorial?.stage!=='look'||tutorial.lookDistance<25)return;tutorial.stage='run';clubUI.step(null);setPause(false);},
-  onMusic(){if(tutorial?.stage==='music')$('music-library').onclick();},onComplete:completeTutorial});
+  onComplete:completeTutorial});
  clubUI.init();
  window.addEventListener('storage',event=>{if(event.key!==KEY||!event.newValue)return;try{club=cleanClub(JSON.parse(event.newValue).club);scene.setTeam(findTeam(club.teamId));clubUI.refresh();}catch{}});
 }

@@ -1,5 +1,5 @@
-import {TEAMS,findTeam,teamLogo,battingAverage} from './teams.js?v=95';
-export function bindClubUI({read,onSelect,onPractice,onSkip,onLookDone,onMusic,onComplete,onOpen,canSave=()=>true}){
+import {TEAMS,findTeam,teamLogo,battingAverage} from './teams.js?v=96';
+export function bindClubUI({read,onSelect,onPractice,onSkip,onLookDone,onComplete,onOpen,canSave=()=>true}){
  const $=id=>document.getElementById(id),dialog=$('team-dialog');let chosen=null,first=false;
  const choice=$('tutorial-choice'),card=$('tutorial-card');
  function refresh(club=read()){
@@ -31,15 +31,27 @@ export function bindClubUI({read,onSelect,onPractice,onSkip,onLookDone,onMusic,o
  choice.addEventListener('cancel',event=>event.preventDefault());
  $('tutorial-start').onclick=()=>{choice.close();onPractice();};
  $('tutorial-skip').onclick=()=>{choice.close();onSkip();};
- $('tutorial-next').onclick=onLookDone;$('tutorial-music').onclick=onMusic;$('tutorial-finish').onclick=onComplete;
- $('finish-music-tutorial').onclick=()=>{$('music-dialog').close();onComplete();};
- function step(stage){
-  card.hidden=!stage;card.dataset.step=stage||'';
-  $('tutorial-next').hidden=stage!=='look';$('tutorial-next').disabled=true;
-  $('tutorial-music').hidden=stage!=='music';$('tutorial-finish').hidden=stage!=='music';
-  $('music-tutorial-note').hidden=stage!=='music';$('finish-music-tutorial').hidden=stage!=='music';
-  const copy={bat:['01 · 타격','누르고, 조준하고, 놓기','화면을 누른 채 손가락이나 마우스를 움직여 조준하고, 손을 떼세요. 이번 연습은 반드시 안타가 됩니다.'],look:['02 · 둘러보기','달리면서 주변도 볼 수 있어요','잠깐 멈췄어요. 화면을 드래그하거나 스크롤해 주변을 둘러보세요.'],music:['03 · 응원가','나만의 응원가를 추가해요','응원가 설정에서 ‘타석 응원가 추가’를 누르고 기기의 음악 파일을 고르면 됩니다. 나중에 설정에서도 추가할 수 있어요.']};
-  if(stage){const [count,title,text]=copy[stage];$('tutorial-count').textContent=count;$('tutorial-title').textContent=title;$('tutorial-text').textContent=text;}
+ $('tutorial-next').onclick=onLookDone;
+ $('finish-music-tutorial').onclick=()=>{onComplete();$('music-dialog').close();};
+ function placeSpotlight(){
+  const button=$('menu').getBoundingClientRect(),game=$('game').getBoundingClientRect(),spot=$('tutorial-spotlight');
+  spot.style.left=(button.left-game.left-6)+'px';spot.style.top=(button.top-game.top-6)+'px';
+  spot.style.width=(button.width+12)+'px';spot.style.height=(button.height+12)+'px';
  }
+ window.addEventListener('resize',placeSpotlight);
+ function step(stage){
+  const music=stage==='music',files=stage==='music-files',menu=stage==='music-menu';
+  card.hidden=!stage||menu||files;card.dataset.step=stage||'';
+  $('tutorial-next').hidden=stage!=='look';$('tutorial-next').disabled=true;
+  $('tutorial-shade').hidden=!music;$('tutorial-spotlight').hidden=!music;
+  $('game').classList.toggle('tutorial-menu-guide',music);
+  $('menu-tutorial-note').hidden=!menu;$('music-library').classList.toggle('tutorial-target',menu);
+  for(const id of ['change-team','controls-help','privacy-help','restart-game','history'])$(id).disabled=menu;
+  $('music-tutorial-note').hidden=!files;$('finish-music-tutorial').hidden=!files;
+  const copy={bat:['01 · 타격','공을 향해 조준하고 손을 떼세요','화면을 누른 채 움직여 조준하세요. 공이 다가오면 손을 떼어 스윙하세요. 연습에서는 타이밍이 달라도 안타가 됩니다.'],look:['02 · 둘러보기','화면을 움직여 주변을 둘러보세요','주루를 잠시 멈췄습니다. 화면을 드래그하거나 마우스 휠을 스크롤하세요. 둘러본 뒤 아래 버튼을 눌러 계속 달리세요.'],music:['03 · 응원가','위쪽 ☰ 메뉴를 누르세요','메뉴에서 응원가를 추가할 수 있습니다. 화살표가 가리키는 버튼을 누르세요.']};
+  if(copy[stage]){const [count,title,text]=copy[stage];$('tutorial-count').textContent=count;$('tutorial-title').textContent=title;$('tutorial-text').textContent=text;}
+  if(music)placeSpotlight();
+ }
+
  return {refresh,openTeams,step,looked(){ $('tutorial-next').disabled=false;},init(){refresh();if(!read().teamId)openTeams(true);else if(!read().tutorialDone)offerPractice();}};
 }
