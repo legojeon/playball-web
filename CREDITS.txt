@@ -45,3 +45,9 @@ v63: crowd-disappointment.mp3 removed from the game and offline cache.
 
 USER MUSIC
 No player or team songs are bundled. User-selected audio is stored locally on the device.
+
+PLAYER MODELS
+Original Play Ball baseball character, authored with Blender 4.5 LTS.
+Near/far GLB meshes and rig are bundled locally; no external character service is used.
+Three.js GLTFLoader and BufferGeometryUtils are from three.js r180 and covered
+by vendor/THREE-LICENSE.txt above.

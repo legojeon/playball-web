@@ -1,15 +1,16 @@
-import {teamTheme} from './teams.js?v=98';
-import {followAim} from './contact-window.js?v=98';
+import {loadAthletes,attachAthlete,athleteLOD,bakeAthlete,mergeBench} from './athlete.js?v=99';
+import {teamTheme} from './teams.js?v=99';
+import {followAim} from './contact-window.js?v=99';
 import * as T from './vendor/three.module.min.js';
-import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=98';
-import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=98';
-import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=98';
-import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=98';
-import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=98';
-import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition} from './fielding.js?v=98';
-import {sampleTrajectory} from './trajectory.js?v=98';
-export {BASES} from './field.js?v=98';
-import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=98';
+import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=99';
+import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=99';
+import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=99';
+import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=99';
+import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=99';
+import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition} from './fielding.js?v=99';
+import {sampleTrajectory} from './trajectory.js?v=99';
+export {BASES} from './field.js?v=99';
+import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=99';
 const V=(x,y,z)=>new T.Vector3(x,y,z);
 const stand=n=>[BASES[n][0]+(n===2?1.8:n===1?.5:-.5),.04,BASES[n][2]-.25];
 const mat=(color,extra={})=>new T.MeshStandardMaterial({color,roughness:.9,...extra});
@@ -24,7 +25,7 @@ export function battedBallScale(depth,height,fov){
 }
 export class Stadium {
  constructor(canvas,{onFieldCatch}={}){
-  this.onFieldCatch=onFieldCatch;
+  this.onFieldCatch=onFieldCatch;this.players=[];this.benches=[];
   this.canvas=canvas;this.inputFrames=new PitchFrames();this.scene=new T.Scene();this.scene.background=new T.Color('#b8d3d1');this.scene.fog=new T.Fog('#b8d3d1',100,210);
   this.camera=new T.PerspectiveCamera(86,1,.08,250);this.playPosition=V(0,1.65,-1.65);this.stancePosition=V(.55,1.65,-1.65);this.camera.position.copy(this.playPosition);this.camera.lookAt(0,(ZONE.bottom+ZONE.top)/2,CONTACT_Z);this.playView=this.camera.quaternion.clone();this.stanceAt=null;
   this.renderer=new T.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});this.renderer.setPixelRatio(Math.min(devicePixelRatio,1.8));
@@ -43,6 +44,11 @@ export class Stadium {
   this.makeZone();this.makeBat();this.makeSwingMark();this.makeBatterBody();this.moves=[];this.staticBases=[false,false,false];this.hit=null;
   this.labelEls=[1,2,3].map(n=>document.getElementById('runner'+n));
   this.resizeObserver=new ResizeObserver(()=>this.resize());this.resizeObserver.observe(canvas);this.resize();
+  this.playerReady=loadAthletes().then(assets=>{
+   this.playerAssets=assets;
+   for(const player of this.players)attachAthlete(player,assets,this.materials,player.userData.home);
+   for(const {group,home} of this.benches){const old=group.getObjectByName(home?'home-bench-players':'away-bench-players');old?.removeFromParent();old?.traverse(m=>m.geometry?.dispose());this.populateDugout(group,home,true);}
+  }).catch(error=>{console.warn('Player model could not load; using the bundled fallback.',error);});
  }
  mesh(geo,material,x=0,y=0,z=0,parent=this.scene){const m=new T.Mesh(geo,material);m.position.set(x,y,z);parent.add(m);return m;}
  box(w,h,d,material,x,y,z,parent){return this.mesh(new T.BoxGeometry(w,h,d),material,x,y,z,parent);}
@@ -190,41 +196,44 @@ export class Stadium {
    this.box(DUGOUT.length,DUGOUT.height,.3,dark,0,DUGOUT.height/2,DUGOUT.depth/2,g);
    this.box(DUGOUT.length,.22,DUGOUT.depth,ribbonMat,0,DUGOUT.height,0,g);
    for(const x of [-DUGOUT.length/2,DUGOUT.length/2])this.box(.25,DUGOUT.height,DUGOUT.depth,dark,x,DUGOUT.height/2,0,g);
-   this.box(DUGOUT.length-1,.25,.65,mat('#778879'),0,.55,1.25,g);
+   this.box(DUGOUT.length-1,.25,.65,mat('#778879'),0,.40,1.25,g);
    const home=side<0;
    const sign=this.stadiumSign(home?'HOME TEAM':'AWAY TEAM',DUGOUT.length-1,.6,0,DUGOUT.height+.13,-DUGOUT.depth/2-.02,0,'#fff3dd',home?'#a2323b':'#243e51',g);if(home)this.homeDugoutSign=sign;
    this.populateDugout(g,home);
   }
  }
- populateDugout(group,home){
-  const player=this.makePlayer(home),parts=[];
+ populateDugout(group,home,rebuild=false){
+  if(!rebuild)this.benches?.push({group,home});
+  const player=this.makePlayer(home),parts=[],poses=[];
+  if(this.players)this.players.splice(this.players.indexOf(player),1);
   player.traverse(part=>{if(part.isMesh)parts.push({part,matrices:[]});});
   // Bake the bench poses into shared instances: eight players cost one draw per
   // model part, rather than eight complete animated player models on mobile.
   for(let i=0;i<8;i++){
    const seated=i<6;
-   player.position.set(seated?-6+i*2.4:i===6?-7.5:7.5,seated?-.115:0,seated?1.2:-.8);
+   player.position.set(seated?-6+i*2.4:i===6?-7.5:7.5,seated?-.20:0,seated?1.2:-.8);
    player.rotation.y=Math.PI+(seated?0:i===6?-.2:.2);
    this.poseRunning(player,0,false);
    const {limbs,knees,elbows,head}=player.userData;
    if(seated){
-    for(const leg of [limbs[0],limbs[2]])leg.rotation.x=-Math.PI/2;
-    for(const knee of knees)knee.rotation.x=Math.PI/2;
+    for(const leg of [limbs[0],limbs[2]])leg.rotation.x=-1.0;
+    for(const knee of knees)knee.rotation.x=1.0;
     for(const arm of [limbs[1],limbs[3]])arm.rotation.x=-.28;
     for(const elbow of elbows)elbow.rotation.x=-1.05;
    }else for(const elbow of elbows)elbow.rotation.x=-.4;
    head.rotation.y=(i%3-1)*.12;
-   player.children.at(-1).position.y=.025-player.position.y;
+   player.userData.shadow.position.y=.025-player.position.y;
    player.updateMatrixWorld(true);
-   for(const item of parts)item.matrices.push(item.part.matrixWorld.clone());
+   if(player.userData.athlete)poses.push(bakeAthlete(player));else for(const item of parts)item.matrices.push(item.part.matrixWorld.clone());
   }
-  const roster=new T.Group();roster.name=home?'home-bench-players':'away-bench-players';
-  for(const {part,matrices} of parts){
+  const roster=poses.length?mergeBench(poses):new T.Group();roster.name=home?'home-bench-players':'away-bench-players';
+  for(const {part,matrices} of poses.length?[]:parts){
    const batch=new T.InstancedMesh(part.geometry,part.material,matrices.length);
    matrices.forEach((matrix,i)=>batch.setMatrixAt(i,matrix));batch.instanceMatrix.needsUpdate=true;
    roster.add(batch);
   }
   group.add(roster);
+  if(poses.length){const skeletons=new Set();player.traverse(m=>{if(m.skeleton)skeletons.add(m.skeleton);});skeletons.forEach(s=>s.dispose());player.userData.shadow.geometry.dispose();}
  }
  setTeam(team){
   const theme=this.teamTheme=teamTheme(team);this.scoreboardFrame?.color.set(theme.primary);this.stadiumRibbon?.color.set(theme.primary);
@@ -236,35 +245,37 @@ export class Stadium {
  }
  makePlayer(runner){
   const m=this.materials,p=new T.Group();const jersey=runner?m.runner:m.jersey,helmet=runner?(m.runnerHelmet||m.helmet):m.helmet;
-  const torso=new T.Group();torso.position.y=.82;p.add(torso);
-  const hips=new T.Group();hips.position.y=.79;p.add(hips);
+  const torso=new T.Bone();torso.position.y=.82;p.add(torso);
+  const hips=new T.Bone();hips.position.y=.79;p.add(hips);
   const shirt=this.mesh(new T.CylinderGeometry(.23,.19,.58,10),jersey,0,.24,0,torso);shirt.scale.z=.70;
   this.box(.39,.045,.25,helmet,0,-.02,0,torso);
   // The shirt front and shoulder width make the trunk's side-on rotation readable.
   for(let i=0;i<3;i++)this.mesh(new T.SphereGeometry(.016,6,5),helmet,0,.16+i*.1,.154,torso);
   this.box(.12,.045,.018,helmet,.1,.34,.16,torso);
   this.mesh(new T.CylinderGeometry(.075,.09,.14,8),m.skin,0,.56,0,torso);
-  const head=new T.Group();head.position.y=.75;torso.add(head);
+  const head=new T.Bone();head.position.y=.75;torso.add(head);
   this.mesh(new T.SphereGeometry(.17,12,8),m.skin,0,0,0,head);
   this.mesh(new T.SphereGeometry(.183,12,8,0,Math.PI*2,0,Math.PI/2),helmet,0,.07,0,head);
   this.box(.27,.04,.19,helmet,0,.07,.16,head);
   const limbs=[],elbows=[],knees=[],hands=[];
   for(const side of [-1,1]){
-   const leg=new T.Group();leg.position.set(side*.105,0,0);hips.add(leg);
+   const leg=new T.Bone();leg.position.set(side*.105,0,0);hips.add(leg);
    this.mesh(new T.CylinderGeometry(.077,.065,.32,7),m.pants,0,-.16,0,leg);
-   const knee=new T.Group();knee.position.y=-.32;leg.add(knee);
+   const knee=new T.Bone();knee.position.y=-.32;leg.add(knee);
    this.mesh(new T.CylinderGeometry(.065,.055,.32,7),m.pants,0,-.16,0,knee);
    this.box(.15,.10,.27,m.shoe,0,-.36,.055,knee);limbs.push(leg);knees.push(knee);
-   const arm=new T.Group();arm.position.set(side*.22,.45,0);torso.add(arm);
+   const arm=new T.Bone();arm.position.set(side*.22,.45,0);torso.add(arm);
    this.mesh(new T.CylinderGeometry(.075,.063,.28,7),jersey,0,-.14,0,arm);
-   const elbow=new T.Group();elbow.position.y=-.28;arm.add(elbow);
+   const elbow=new T.Bone();elbow.position.y=-.28;arm.add(elbow);
    this.mesh(new T.CylinderGeometry(.063,.048,.29,7),m.skin,0,-.145,0,elbow);
-   const hand=new T.Group();hand.position.y=-.29;elbow.add(hand);this.mesh(new T.SphereGeometry(.059,8,7),m.skin,0,0,0,hand);
+   const hand=new T.Bone();hand.position.y=-.29;elbow.add(hand);this.mesh(new T.SphereGeometry(.059,8,7),m.skin,0,0,0,hand);
    limbs.push(arm);elbows.push(elbow);hands.push(hand);
   }
   p.userData={limbs,elbows,knees,hands,torso,hips,head};
   const shadow=this.mesh(new T.CircleGeometry(.35,16),this.shadowMat,0,.025,0,p);shadow.rotation.x=-Math.PI/2;shadow.scale.set(1,1.7,1);
   if(!runner)this.mesh(new T.SphereGeometry(.13,8,7),mat('#8b6248'),0,0,.035,hands[0]);
+  p.userData.shadow=shadow;p.userData.home=runner;this.players?.push(p);
+  if(this.playerAssets)attachAthlete(p,this.playerAssets,this.materials,runner);
   return p;
  }
  makeZone(){
@@ -496,7 +507,8 @@ export class Stadium {
   for(const k of Object.keys(a))v[k]=Array.isArray(a[k])?a[k].map((n,j)=>T.MathUtils.lerp(n,b[k][j],u)):T.MathUtils.lerp(a[k],b[k],u);
   const p=this.pitcher,{limbs:l,elbows:e,knees:k,torso,hips,head}=p.userData;
   p.position.set(0,.23,18.44-v.travel);p.rotation.set(0,Math.PI,0);
-  hips.rotation.y=v.hip;torso.rotation.set(v.lean,v.chest,-.05*Math.sin(Math.min(1,t)*Math.PI));head.rotation.y=-v.chest*.85;
+  hips.position.set(0,.79,0);torso.position.set(0,.82,0);l[0].position.x=-.105;l[2].position.x=.105;
+  hips.rotation.y=v.hip;torso.rotation.set(v.lean,v.chest,-.05*Math.sin(Math.min(1,t)*Math.PI));head.rotation.set(0,-v.chest*.85,0);
   l[0].rotation.set(v.lift,0,-.10);k[0].rotation.x=v.knee;l[2].rotation.set(v.back,0,.12);k[1].rotation.x=.10+v.back*.45;
   const direction=(key)=>{
    const down=V(0,-1,0),qa=new T.Quaternion().setFromUnitVectors(down,V(...a[key]).normalize());
@@ -555,11 +567,45 @@ export class Stadium {
   // limbs are [left leg, left arm, right leg, right arm]. Opposite arm leads.
   const {limbs,knees=[],elbows=[],torso,hips}=player.userData;
   const phases=[0,Math.PI,Math.PI,0],amplitude=walk?.42:.60;
-  limbs.forEach((limb,i)=>{limb.rotation.x=moving?Math.sin(step+phases[i])*amplitude:0;});
-  knees.forEach((k,i)=>k.rotation.x=moving?.12+Math.max(0,-Math.sin(step+i*Math.PI))*(walk?.35:.8):0);
-  elbows.forEach(e=>e.rotation.x=moving?-(walk?.4:1.0):0);
+  limbs.forEach((limb,i)=>{limb.rotation.set(moving?Math.sin(step+phases[i])*amplitude:0,0,0);});
+  knees.forEach((k,i)=>k.rotation.set(moving?.12+Math.max(0,-Math.sin(step+i*Math.PI))*(walk?.35:.8):0,0,0));
+  elbows.forEach(e=>e.rotation.set(moving?-(walk?.4:1.0):0,0,0));
   if(torso)torso.rotation.set(moving?(walk?.04:.12):0,moving?Math.sin(step)*.06:0,0);
-  if(hips)hips.rotation.y=moving?-Math.sin(step)*.04:0;
+  if(hips)hips.rotation.set(0,moving?-Math.sin(step)*.04:0,0);
+  if(player.userData.athlete){
+   player.userData.head.rotation.set(0,0,0);limbs[0].position.x=-.105;limbs[2].position.x=.105;
+   this.plantAthleteFeet(player);
+   if(moving)torso.rotation.z=Math.sin(step)*(walk?.012:.028);
+  }
+ }
+ plantAthleteFeet(player){
+  const {limbs,knees,hips,torso}=player.userData;
+  // Preserve the lowest sole while knee flexion changes the stride height.
+  const soles=[0,2].map((index,i)=>.79-.32*Math.cos(limbs[index].rotation.x)-.41*Math.cos(limbs[index].rotation.x+knees[i].rotation.x));
+  const shift=.06-Math.min(...soles);hips.position.set(0,.79+shift,0);torso.position.set(0,.82+shift,0);
+ }
+ poseIdle(player,time,offset=0){
+  if(!player.userData.athlete)return;
+  const {torso,elbows,head}=player.userData,breath=Math.sin(time*1.7+offset);
+  torso.position.y+=breath*.004;torso.rotation.z=breath*.008;
+  elbows.forEach(e=>e.rotation.x=-.18);head.rotation.y=Math.sin(time*.45+offset)*.035;
+ }
+ poseFielding(player,time,mode='ready',weight=1,height=1.2){
+  if(!player.userData.athlete)return;
+  const {limbs,knees,elbows,torso,hips,head}=player.userData;
+  const w=T.MathUtils.clamp(weight,0,1),low=mode==='ground'||mode==='crouch',bend=low?(mode==='crouch'?1.05:.95):.20;
+  for(const i of [0,2])limbs[i].rotation.x=T.MathUtils.lerp(limbs[i].rotation.x,-bend,w);
+  knees.forEach(k=>k.rotation.x=T.MathUtils.lerp(k.rotation.x,bend*2,w));
+  limbs[0].position.x=-.105-(low?.045:.02)*w;limbs[2].position.x=.105+(low?.045:.02)*w;
+  torso.rotation.x=T.MathUtils.lerp(torso.rotation.x,low?.48:.10,w);torso.rotation.y*=1-w;hips.rotation.y*=1-w;
+  // Raise the glove before contact, then bring it toward the chest.
+  const arm=mode==='catch'?T.MathUtils.clamp(-.8-(height-.8)*1.2,-2.65,-.55):low?-.20:-.46;
+  for(const [j,i]of [1,3].entries()){
+   limbs[i].rotation.set(T.MathUtils.lerp(limbs[i].rotation.x,j?arm*.75:arm,w),0,(j?-.08:.08)*w);
+   elbows[j].rotation.set(T.MathUtils.lerp(elbows[j].rotation.x,low?-.25:-.72,w),0,0);
+  }
+  this.plantAthleteFeet(player);head.rotation.x=-torso.rotation.x*.65;
+  torso.position.y+=Math.sin(time*1.7)*.003;
  }
  runningPoint(move,t){
   let distance=move.distance*Math.max(0,Math.min(1,t));
@@ -677,15 +723,22 @@ export class Stadium {
   f.position.set(base[0]+(target.x-base[0])*progress,0,base[1]+(target.z-base[1])*progress);
   f.rotation.y=Math.atan2(target.x-base[0],target.z-base[1]);
   if(progress>0&&progress<1)this.poseRunning(f,distance*progress/4*Math.PI*2,true);
+  const gather=T.MathUtils.smoothstep(t,fielding.time-.32,fielding.time);
+  if(gather>0)this.poseFielding(f,t,fielding.caught?'catch':'ground',gather,target.y);
   if(t<fielding.time)return;
-  if(fielding.caught){this.ball.visible=false;f.userData.limbs[1].rotation.x=-2.5;return;}
+  if(fielding.caught){this.ball.visible=false;if(!f.userData.athlete)f.userData.limbs[1].rotation.x=-2.5;return;}
   const plan=h.throwPlan||throwPlan(fielding,h.throwBase),ball=throwPosition(plan,t);
   this.ball.position.set(ball.x,ball.y,ball.z);
   f.rotation.y=Math.atan2(plan.legs[0].to.x-target.x,plan.legs[0].to.z-target.z);
-  f.userData.limbs[3].rotation.x=t<plan.legs[0].release?-1.5:-.5;
+  const release=plan.legs[0].release,load=T.MathUtils.smoothstep(t,fielding.time,release),follow=T.MathUtils.smoothstep(t,release,release+.28);
+  if(f.userData.athlete){
+   this.poseRunning(f,0,false);this.poseFielding(f,t,'ready');
+   f.userData.torso.rotation.y=.35*load-.7*follow;
+   f.userData.limbs[3].rotation.x=-.6-1.8*load+1.6*follow;f.userData.elbows[1].rotation.x=-1.2*(1-follow);
+  }else f.userData.limbs[3].rotation.x=t<release?-1.5:-.5;
   for(const l of plan.legs){
    const receiver=l.receiver===7?this.catcher:this.fielders[l.receiver];if(!receiver)continue;
-   if(t>=l.arrival-.18){receiver.userData.limbs[1].rotation.x=-1.7;receiver.rotation.y=Math.atan2(l.from.x-l.to.x,l.from.z-l.to.z);}
+   if(t>=l.arrival-.18){if(receiver.userData.athlete)this.poseFielding(receiver,t,'catch',T.MathUtils.smoothstep(t,l.arrival-.18,l.arrival),l.to.y);else receiver.userData.limbs[1].rotation.x=-1.7;receiver.rotation.y=Math.atan2(l.from.x-l.to.x,l.from.z-l.to.z);}
   }
   if(plan.relay!==null&&plan.legs[1]&&t>=plan.legs[1].release){const relay=this.defensivePlayer(plan.relay);relay.rotation.y=Math.atan2(plan.target.x-relay.position.x,plan.target.z-relay.position.z);relay.userData.limbs[3].rotation.x=-1.8;}
 
@@ -700,6 +753,7 @@ export class Stadium {
    player.position.set(pos.x,0,pos.z);
    player.rotation.y=Math.atan2(pos.moving?target.x-pos.x:this.ball.position.x-pos.x,pos.moving?target.z-pos.z:this.ball.position.z-pos.z);
    this.poseRunning(player,pos.travel/4*Math.PI*2,pos.moving);
+   if(!pos.moving)this.poseFielding(player,t);
    if(pos.moving)player.position.y+=Math.abs(Math.sin(pos.travel/4*Math.PI*2))*.035;
    if(a.fielder===8)this.pitcherFootShadows?.forEach(shadow=>shadow.visible=false);
   }
@@ -767,8 +821,8 @@ export class Stadium {
    pitch.lastRenderedError=visual.error;
    this.ball.position.copy(this.pitchPosition(pitch,visual.t));this.ball.rotation.set(visual.t*26,visual.t*15,0);
   }
-  this.fielders.forEach((f,i)=>{f.position.set(FIELDERS[i][0],0,FIELDERS[i][1]);this.poseRunning(f,0,false);});
-  if(this.catcher){this.catcher.position.set(0,0,-2);this.poseRunning(this.catcher,0,false);}
+  this.fielders.forEach((f,i)=>{f.position.set(FIELDERS[i][0],0,FIELDERS[i][1]);this.poseRunning(f,0,false);if(['windup','pitch'].includes(phase))this.poseFielding(f,time/1000);else this.poseIdle(f,time/1000,i);});
+  if(this.catcher){this.catcher.position.set(0,0,-2);this.poseRunning(this.catcher,0,false);this.poseFielding(this.catcher,time/1000,'crouch');}
   const soundingHit=this.hit;
   if(this.hit)this.drawHit(time);
   if(this.hit)this.rememberDefense(time);else this.returnDefense(time,phase);
@@ -792,6 +846,7 @@ export class Stadium {
   if(phase==='pitch'&&pitch&&!pitch.swung)this.inputFrames.record(pitch,time,performance.now(),this.ball.position,this.camera,this.ball.visible);
   this.updateBattingGuide(pitch,phase,time);
   this.drawSwingMark(time);
+  for(const player of this.players||[])if(player.visible)athleteLOD(player,this.camera);
   this.renderer.setViewport(0,0,this.w,this.h);this.renderer.setScissorTest(false);this.renderFirstPersonScene(phase);
   const reviewVisible=this.swingMark?.visible;
   const label=typeof document!=='undefined'?document.getElementById('review-label'):null;if(label){label.hidden=!reviewVisible;if(reviewVisible)label.textContent=this.lastSwingMark.g.hit?(this.lastSwingMark.g.assisted?'보정 접촉 · 측면':'접촉 순간 · 측면'):'타격 지점 통과 · 측면';}
