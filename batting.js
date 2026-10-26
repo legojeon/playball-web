@@ -1,8 +1,8 @@
-import {BALL,traceBall,isFairBall} from './trajectory.js?v=103';
-import {BAT} from './swing.js?v=103';
-import {sweepContact,swingReview,assistedContact} from './collision.js?v=103';
-import {fieldBall,awardBases,throwPlan} from './fielding.js?v=103';
-export {FIELDERS} from './field.js?v=103';
+import {BALL,traceBall,isFairBall} from './trajectory.js?v=104';
+import {BAT} from './swing.js?v=104';
+import {sweepContact,swingReview,assistedContact} from './collision.js?v=104';
+import {fieldBall,awardBases,throwPlan} from './fielding.js?v=104';
+export {FIELDERS} from './field.js?v=104';
 export const contactGeometry=sweepContact;
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),radians=Math.PI/180;
 // Material response: preserve sweet-spot power, with less rebound and spin transfer.

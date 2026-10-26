@@ -1,5 +1,5 @@
-import {firstOutOfPlay,inPlayTerritory} from './stadium-layout.js?v=103';
-import {BASES,FIELDERS,FIELD,runnerArrival,fielderTravel,fielderDistance} from './field.js?v=103';
+import {firstOutOfPlay,inPlayTerritory} from './stadium-layout.js?v=104';
+import {BASES,FIELDERS,FIELD,runnerArrival,fielderTravel,fielderDistance} from './field.js?v=104';
 function reach(i,p,air){
  const [x,z]=FIELDERS[i],reaction=FIELD.reaction+(i>=4?.12:0),radius=air?1.1:.75;
  return reaction+fielderTravel(Math.max(0,Math.hypot(p.x-x,p.z-z)-radius));
@@ -153,4 +153,24 @@ export function defensePosition(assignment,fielding,t){
  const switchAt=fielding.time+.25;
  if(assignment.next&&t>switchAt){const pivot=toward(start,assignment.point,switchAt-FIELD.reaction);const next=toward(pivot,assignment.next,t-switchAt);next.travel+=pivot.travel;return next;}
  return toward(start,assignment.point,t-FIELD.reaction);
+}
+
+// Home runs have no fielding/throw plan, but outfielders still read the flight.
+// Keep pursuit inside the fence and decelerate once the ball clears it.
+export function homeRunDefensePlans(hit){
+ if(!hit.homeRun||!hit.samples?.length)return [];
+ const end=hit.samples.at(-1),angle=Math.max(-Math.PI/4+.015,Math.min(Math.PI/4-.015,Math.atan2(end.x,end.z))),radius=FIELD.fence-2.2;
+ const wall={x:Math.sin(angle)*radius,z:Math.cos(angle)*radius};
+ const nearest=[4,5,6].sort((a,b)=>Math.hypot(FIELDERS[a][0]-wall.x,FIELDERS[a][1]-wall.z)-Math.hypot(FIELDERS[b][0]-wall.x,FIELDERS[b][1]-wall.z))[0];
+ return [4,5,6].map(fielder=>{const [x,z]=FIELDERS[fielder],share=fielder===nearest?1:Math.abs(fielder-nearest)===1?.48:.22,point={x:x+(wall.x-x)*share,z:z+(wall.z-z)*share};return {fielder,point,length:Math.hypot(point.x-x,point.z-z),crossAt:end.t,primary:fielder===nearest};});
+}
+export function homeRunDefensePosition(plan,t){
+ const [x,z]=FIELDERS[plan.fielder],reaction=FIELD.reaction+.12,cross=Math.max(0,plan.crossAt-reaction),coast=.65,after=Math.max(0,Math.min(coast,t-plan.crossAt));
+ const crossingSpeed=Math.min(FIELD.fielderSpeed,FIELD.fielderAcceleration*cross);
+ const raw=t<=plan.crossAt?fielderDistance(t-reaction):fielderDistance(cross)+crossingSpeed*(after-after*after/(2*coast));
+ const rawSpeed=t<=plan.crossAt?Math.min(FIELD.fielderSpeed,Math.max(0,t-reaction)*FIELD.fielderAcceleration):crossingSpeed*(1-after/coast);
+ // Brake over the last few metres rather than snapping to a stop at the padding.
+ const brake=Math.min(2.2,plan.length),start=plan.length-brake,u=brake?Math.max(0,Math.min(1,(raw-start)/(2*brake))):1;
+ const travel=raw<start?raw:start+brake*(2*u-u*u),speed=rawSpeed*(1-u),progress=plan.length?travel/plan.length:1;
+ return {x:x+(plan.point.x-x)*progress,z:z+(plan.point.z-z)*progress,travel,speed,moving:speed>.02};
 }

@@ -1,19 +1,19 @@
-import {handPoint,poseBench,poseTransfer,samplePose,walkingLegs} from './player-motion.js?v=103';
-import {loadAthletes,attachAthlete,athleteLOD,bakeAthlete,mergeBench,lowerAthleteParts} from './athlete.js?v=103';
-import {makeBattingGlove,battingArmGeometry} from './first-person.js?v=103';
-import {parkTexture,groundUV,softShadowTexture,seatGeometry,spectatorGeometry,parkNoise,CROWD_COLORS,addParkDetails} from './stadium-art.js?v=103';
-import {teamTheme} from './teams.js?v=103';
-import {followAim} from './contact-window.js?v=103';
+import {handPoint,poseBench,poseTransfer,samplePose,walkingLegs} from './player-motion.js?v=104';
+import {loadAthletes,attachAthlete,athleteLOD,bakeAthlete,mergeBench,lowerAthleteParts} from './athlete.js?v=104';
+import {makeBattingGlove,battingArmGeometry} from './first-person.js?v=104';
+import {parkTexture,groundUV,softShadowTexture,seatGeometry,spectatorGeometry,parkNoise,CROWD_COLORS,addParkDetails} from './stadium-art.js?v=104';
+import {teamTheme} from './teams.js?v=104';
+import {followAim} from './contact-window.js?v=104';
 import * as T from './vendor/three.module.min.js';
-import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=103';
-import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=103';
-import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=103';
-import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=103';
-import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=103';
-import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition} from './fielding.js?v=103';
-import {sampleTrajectory} from './trajectory.js?v=103';
-export {BASES} from './field.js?v=103';
-import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=103';
+import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=104';
+import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=104';
+import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=104';
+import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=104';
+import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=104';
+import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition,homeRunDefensePlans,homeRunDefensePosition} from './fielding.js?v=104';
+import {sampleTrajectory} from './trajectory.js?v=104';
+export {BASES} from './field.js?v=104';
+import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=104';
 const V=(x,y,z)=>new T.Vector3(x,y,z);
 const stand=n=>[BASES[n][0]+(n===2?1.8:n===1?.5:-.5),.04,BASES[n][2]-.25];
 const mat=(color,extra={})=>new T.MeshStandardMaterial({color,roughness:.9,...extra});
@@ -512,12 +512,13 @@ export class Stadium {
   // Hip rotation leads the chest. The throwing elbow circles behind the trunk,
   // then leads the hand through a three-quarter arm slot and across the body.
   // Each arm direction is expressed in the rotating chest's local coordinates.
+  // Longer arm take-back and cocking, then a compact final 9% drive to release.
   const poses=[
    {t:0,travel:0,hip:1.05,chest:1.12,lean:0,lift:0,knee:.1,back:0,arm:[.12,-.23,.10],fore:[-.18,.12,.22],glove:[-.1,-.20,.15],gf:[.12,.17,.20]},
    {t:.30,travel:0,hip:1.32,chest:1.48,lean:-.09,lift:-1.52,knee:2.05,back:.05,arm:[.12,-.23,.10],fore:[-.18,.12,.22],glove:[-.1,-.20,.15],gf:[.12,.17,.20]},
-   {t:.52,travel:.20,hip:1.02,chest:1.38,lean:0,lift:-1.0,knee:1.0,back:.12,arm:[.14,-.23,-.12],fore:[.08,-.17,-.22],glove:[-.20,.02,.20],gf:[-.10,.08,.26]},
-   {t:.73,travel:.58,hip:.40,chest:1.05,lean:.04,lift:-.82,knee:.4,back:.34,arm:[.26,.07,-.17],fore:[0,.24,-.18],glove:[-.20,.07,.20],gf:[-.10,.02,.27]},
-   {t:.88,travel:.76,hip:-.10,chest:.56,lean:.12,lift:-.65,knee:.24,back:.52,arm:[.28,.04,-.05],fore:[-.02,.13,-.29],glove:[-.13,-.15,.20],gf:[.15,.10,.20]},
+   {t:.62,travel:.20,hip:1.02,chest:1.38,lean:0,lift:-1.0,knee:1.0,back:.12,arm:[.14,-.23,-.12],fore:[.08,-.17,-.22],glove:[-.20,.02,.20],gf:[-.10,.08,.26]},
+   {t:.83,travel:.58,hip:.40,chest:1.05,lean:.04,lift:-.82,knee:.4,back:.34,arm:[.26,.07,-.17],fore:[0,.24,-.18],glove:[-.20,.07,.20],gf:[-.10,.02,.27]},
+   {t:.91,travel:.76,hip:-.10,chest:.56,lean:.12,lift:-.65,knee:.24,back:.52,arm:[.28,.04,-.05],fore:[-.02,.13,-.29],glove:[-.13,-.15,.20],gf:[.15,.10,.20]},
    {t:1,travel:.82,hip:-.33,chest:-.12,lean:.22,lift:-.56,knee:.2,back:.64,arm:[.10,.24,.16],fore:[-.015,.04,.29],glove:[-.08,-.24,.10],gf:[.16,.12,.18]},
    {t:1.18,travel:.96,hip:-.50,chest:-.70,lean:.60,lift:-.35,knee:.18,back:1.05,arm:[-.17,-.05,.24],fore:[-.22,-.19,.08],glove:[-.1,-.24,.08],gf:[.12,.18,.15]},
    {t:1.48,travel:.86,hip:-.56,chest:-.83,lean:.66,lift:-.26,knee:.12,back:1.56,arm:[-.18,-.20,.08],fore:[-.08,-.25,-.10],glove:[-.1,-.24,.08],gf:[.12,.18,.15]},
@@ -733,10 +734,10 @@ export class Stadium {
   // Render the decisive contact at least once, even across a dropped frame.
   const t=h.announcementAt!==undefined&&!h.announced?Math.min(elapsed,h.announcementAt):elapsed,fielding=h.fielding;
   h.renderedThrough=t;
-  if(t>h.animationTime+.25){this.hit=null;return;}
+  if(t>h.animationTime+(h.homeRun?1.2:.25)){this.hit=null;return;}
   const point=sampleTrajectory(h.samples,Math.min(t,fielding?.time??Infinity));
   this.ball.userData.held=false;this.ball.userData.flightWeight=1;this.ball.position.set(point.x,point.y,point.z);this.ball.rotation.x=t*35;this.ball.visible=t<h.animationTime;
-  if(!fielding)return;
+  if(!fielding){if(h.homeRun)this.drawHomeRunDefense(h,t);return;}
   this.drawSupportDefense(h,t);
   const f=this.fielders[fielding.fielder],base=FIELDERS[fielding.fielder],target=fielding.point;
   const distance=Math.hypot(target.x-base[0],target.z-base[1]);
@@ -810,6 +811,17 @@ export class Stadium {
   const receiver=this.defensivePlayer(plan.legs.at(-1).receiver);this.ball.position.copy(handPoint(receiver,0));this.ball.userData.held=true;
  }
  defensivePlayer(i){return i===8?this.pitcher:i===7?this.catcher:this.fielders[i];}
+ drawHomeRunDefense(hit,t){
+  hit.homeRunPlans??=homeRunDefensePlans(hit);
+  for(const plan of hit.homeRunPlans){
+   const player=this.fielders[plan.fielder],pos=homeRunDefensePosition(plan,t),[x,z]=FIELDERS[plan.fielder];
+   player.position.set(pos.x,0,pos.z);
+   const runYaw=Math.atan2(plan.point.x-x,plan.point.z-z),lookYaw=Math.atan2(this.ball.position.x-pos.x,this.ball.position.z-pos.z),watch=T.MathUtils.smoothstep(FIELD.fielderSpeed-pos.speed,FIELD.fielderSpeed-1,FIELD.fielderSpeed);
+   player.rotation.set(0,runYaw+Math.atan2(Math.sin(lookYaw-runYaw),Math.cos(lookYaw-runYaw))*watch,0);
+   this.poseRunning(player,pos.travel/4*Math.PI*2,pos.moving,false,Math.min(1,pos.speed/3));
+   if(player.userData.head)player.userData.head.rotation.x=-T.MathUtils.clamp(Math.atan2(this.ball.position.y-1.6,Math.max(1,Math.hypot(this.ball.position.x-pos.x,this.ball.position.z-pos.z))),-.12,.55);
+  }
+ }
  drawSupportDefense(hit,t){
   const f=hit.fielding;
   hit.defenseAssignments??=defenseAssignments(hit);
