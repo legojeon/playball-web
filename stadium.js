@@ -1,17 +1,18 @@
-import {loadAthletes,attachAthlete,athleteLOD,bakeAthlete,mergeBench,lowerAthleteParts} from './athlete.js?v=100';
-import {makeBattingGlove,battingArmGeometry} from './first-person.js?v=100';
-import {teamTheme} from './teams.js?v=100';
-import {followAim} from './contact-window.js?v=100';
+import {loadAthletes,attachAthlete,athleteLOD,bakeAthlete,mergeBench,lowerAthleteParts} from './athlete.js?v=101';
+import {makeBattingGlove,battingArmGeometry} from './first-person.js?v=101';
+import {parkTexture,groundUV,softShadowTexture,seatGeometry,spectatorGeometry,parkNoise,CROWD_COLORS,addParkDetails} from './stadium-art.js?v=101';
+import {teamTheme} from './teams.js?v=101';
+import {followAim} from './contact-window.js?v=101';
 import * as T from './vendor/three.module.min.js';
-import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=100';
-import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=100';
-import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=100';
-import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=100';
-import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=100';
-import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition} from './fielding.js?v=100';
-import {sampleTrajectory} from './trajectory.js?v=100';
-export {BASES} from './field.js?v=100';
-import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=100';
+import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=101';
+import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=101';
+import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=101';
+import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=101';
+import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=101';
+import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition} from './fielding.js?v=101';
+import {sampleTrajectory} from './trajectory.js?v=101';
+export {BASES} from './field.js?v=101';
+import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=101';
 const V=(x,y,z)=>new T.Vector3(x,y,z);
 const stand=n=>[BASES[n][0]+(n===2?1.8:n===1?.5:-.5),.04,BASES[n][2]-.25];
 const mat=(color,extra={})=>new T.MeshStandardMaterial({color,roughness:.9,...extra});
@@ -27,14 +28,14 @@ export function battedBallScale(depth,height,fov){
 export class Stadium {
  constructor(canvas,{onFieldCatch}={}){
   this.onFieldCatch=onFieldCatch;this.players=[];this.benches=[];
-  this.canvas=canvas;this.inputFrames=new PitchFrames();this.scene=new T.Scene();this.scene.background=new T.Color('#b8d3d1');this.scene.fog=new T.Fog('#b8d3d1',100,210);
+  this.canvas=canvas;this.inputFrames=new PitchFrames();this.scene=new T.Scene();this.scene.background=new T.Color('#c7d9df');this.scene.fog=new T.Fog('#c7d9df',115,235);
   this.camera=new T.PerspectiveCamera(86,1,.08,250);this.playPosition=V(0,1.65,-1.65);this.stancePosition=V(.55,1.65,-1.65);this.camera.position.copy(this.playPosition);this.camera.lookAt(0,(ZONE.bottom+ZONE.top)/2,CONTACT_Z);this.playView=this.camera.quaternion.clone();this.stanceAt=null;
   this.renderer=new T.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});this.renderer.setPixelRatio(Math.min(devicePixelRatio,1.8));
-  this.renderer.outputColorSpace=T.SRGBColorSpace;this.renderer.toneMapping=T.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.15;
-  this.scene.add(new T.HemisphereLight('#f2f3de','#577450',2.3));const sun=new T.DirectionalLight('#ffe4b9',2.8);sun.position.set(-30,60,-10);this.scene.add(sun);
+  this.renderer.outputColorSpace=T.SRGBColorSpace;this.renderer.toneMapping=T.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.0;
+  this.scene.add(new T.HemisphereLight('#ecf3ff','#657452',1.45));const sun=new T.DirectionalLight('#fff0db',2.4);sun.position.set(-30,60,-10);this.scene.add(sun);
   this.materials={grass:mat('#538769'),dirt:mat('#bd9473'),line:mat('#f2ebcf'),jersey:mat('#ecebde'),helmet:mat('#243e51'),skin:mat('#c79975'),pants:mat('#dddcca'),shoe:mat('#24383b'),runner:mat('#c8323b')};
   this.materials.runnerHelmet=this.materials.helmet.clone();
-  this.makeField();this.makeStadium();this.makeBackStands();this.pitcher=this.makePlayer(false);this.pitcher.position.set(0,.23,18.44);this.pitcher.rotation.y=Math.PI;this.pitcher.scale.setScalar(1.15);this.scene.add(this.pitcher);
+  this.makeField();this.makeStadium();this.makeBackStands();addParkDetails(this);this.pitcher=this.makePlayer(false);this.pitcher.position.set(0,.23,18.44);this.pitcher.rotation.y=Math.PI;this.pitcher.scale.setScalar(1.15);this.scene.add(this.pitcher);
   this.pitcherFootShadows=[0,1].map(()=>{const m=this.mesh(new T.CircleGeometry(.18,18),this.shadowMat.clone());m.rotation.x=-Math.PI/2;return m;});
   this.fielders=[];for(const [x,z] of FIELDERS){const p=this.makePlayer(false);p.position.set(x,0,z);p.rotation.y=Math.PI;this.scene.add(p);this.fielders.push(p);}
   this.catcher=this.makePlayer(false);this.catcher.position.set(0,0,-2);this.scene.add(this.catcher);
@@ -58,20 +59,20 @@ export class Stadium {
  makeField(){
   const m=this.materials;
   this.mesh(new T.PlaneGeometry(450,450),mat('#7a8580'),0,-.04,40).rotation.x=-Math.PI/2;
-  const turf=document.createElement('canvas');turf.width=turf.height=512;const tc=turf.getContext('2d');tc.fillStyle='#52834b';tc.fillRect(0,0,512,512);tc.fillStyle='#659654';for(let i=-512;i<1024;i+=64){tc.beginPath();tc.moveTo(i,0);tc.lineTo(i+32,0);tc.lineTo(i+544,512);tc.lineTo(i+512,512);tc.fill();}
-  const grassTexture=new T.CanvasTexture(turf);grassTexture.colorSpace=T.SRGBColorSpace;
-  grassTexture.wrapS=grassTexture.wrapT=T.RepeatWrapping;grassTexture.repeat.set(1/160,1/160);
-  this.flatShape(fieldOutline(),mat('#ffffff',{map:grassTexture}),-.024);
+  m.grass.color.set('#ffffff');m.grass.map=parkTexture('grass');m.grass.roughness=1;
+  m.dirt.color.set('#ffffff');m.dirt.map=parkTexture('dirt');m.dirt.roughness=1;
+  groundUV(this.flatShape(fieldOutline(),m.grass,-.024));
   const foulTrack=mat('#a95f4c');for(let i=0;i<FOUL_BOUNDARY.length-1;i++)this.flatShape([boundaryPoint(i,-2.6),boundaryPoint(i+1,-2.6),boundaryPoint(i+1),boundaryPoint(i)],foulTrack,-.008);
   this.mesh(new T.RingGeometry(106,110,96,1,Math.PI*1.25,Math.PI*.5),mat('#bc9969'),0,-.015,0).rotation.x=-Math.PI/2;
-  this.flatShape([[0,-4],[23,20],[0,45],[-23,20]],m.dirt);
-  this.flatShape([[0,5],[15,20],[0,35],[-15,20]],m.grass,.03);
-  const homeCircle=this.mesh(new T.CircleGeometry(4,40),m.dirt,0,.021,-.2);homeCircle.rotation.x=-Math.PI/2;
-  const mound=this.mesh(new T.CylinderGeometry(2,2.4,.28,40),mat('#cca783'),0,.14,18.44);this.box(.65,.035,.14,m.line,0,.3,18.8);
+  const infield=[[0,-4],...Array.from({length:49},(_,i)=>{const a=-Math.PI/2+i/48*Math.PI;return [Math.sin(a)*26.5,18.44+Math.cos(a)*26.5];})];
+  groundUV(this.flatShape(infield,m.dirt));
+  groundUV(this.flatShape([[0,5],[15,20],[0,35],[-15,20]],m.grass,.03));
+  const homeCircle=this.mesh(new T.CircleGeometry(4,40),m.dirt,0,.021,-.2);homeCircle.rotation.x=-Math.PI/2;groundUV(homeCircle);
+  const mound=this.mesh(new T.LatheGeometry([[2.6,.024],[2.25,.12],[1.8,.24],[1.3,.28],[0,.28]].map(([r,y])=>new T.Vector2(r,y)),48),m.dirt,0,0,18.44);groundUV(mound);this.box(.65,.035,.14,m.line,0,.3,18.8);
   for(let i=1;i<4;i++){const [x,,z]=BASES[i];const b=this.box(.65,.15,.65,m.line,x,.1,z);b.rotation.y=Math.PI/4;}
   for(const side of [-1,1]){this.stripe([0,0],[side*FIELD.fence/Math.sqrt(2),FIELD.fence/Math.sqrt(2)],.09,m.line);this.stripe([side*.45,-1.85],[side*1.55,-1.85],.035,m.line);this.stripe([side*1.55,-1.85],[side*1.55,.35],.035,m.line);this.stripe([side*.45,.35],[side*1.55,.35],.035,m.line);}
   this.flatShape([[-.3,.4],[.3,.4],[.3,0],[0,-.28],[-.3,0]],m.line,.04);
-  const shadowMat=new T.MeshBasicMaterial({color:'#1c3a34',transparent:true,opacity:.22,depthWrite:false});
+  const shadowMat=new T.MeshBasicMaterial({color:'#182b22',map:softShadowTexture(),transparent:true,opacity:.72,depthWrite:false});
   this.shadowMat=shadowMat;
  }
  stadiumSign(text,w,h,x,y,z,angle=0,color='#d7e4cf',background='#1b3933',parent=this.scene){
@@ -82,9 +83,9 @@ export class Stadium {
  }
  makeStadium(){
   const wall=mat('#173f34'),concrete=mat('#aeb6ad'),dark=mat('#203c38'),sand=mat('#c8b286');
-  const seats=new T.InstancedMesh(new T.BoxGeometry(.8,.7,.7),mat('#426c58'),24*6*12),dummy=new T.Object3D();let n=0;
-  const fans=new T.InstancedMesh(new T.CylinderGeometry(.19,.24,.6,5),mat('#bc3b43'),24*6*12),heads=new T.InstancedMesh(new T.SphereGeometry(.15,6,4),mat('#c99e7a'),24*6*12);let crowd=0;
-  const spectator=(x,y,z,a,index)=>{dummy.position.set(x,y,z);dummy.rotation.set(0,a,0);dummy.updateMatrix();fans.setMatrixAt(crowd,dummy.matrix);fans.setColorAt(crowd,new T.Color(['#bd3442','#ece3d1','#344c64','#d0be95','#bc3945'][(index*7+index%3)%5]));dummy.position.y+=.43;dummy.updateMatrix();heads.setMatrixAt(crowd,dummy.matrix);crowd++;};
+  const seats=new T.InstancedMesh(seatGeometry(),mat('#ffffff'),24*6*12),dummy=new T.Object3D();let n=0;
+  const fans=new T.InstancedMesh(spectatorGeometry(),mat('#ffffff'),24*6*12),heads=new T.InstancedMesh(new T.SphereGeometry(.105,6,4),mat('#c5a080'),24*6*12);let crowd=0;
+  const spectator=(x,y,z,a,index)=>{dummy.position.set(x,y,z);dummy.rotation.set(0,a,0);dummy.updateMatrix();fans.setMatrixAt(crowd,dummy.matrix);fans.setColorAt(crowd,new T.Color(CROWD_COLORS[Math.floor(parkNoise(index*37+crowd)*CROWD_COLORS.length)]));dummy.position.y+=.34;dummy.updateMatrix();heads.setMatrixAt(crowd,dummy.matrix);crowd++;};
   for(let i=0;i<24;i++){
    const a=-Math.PI/4+(i+.5)/24*Math.PI/2,x=Math.sin(a)*FIELD.fence,z=Math.cos(a)*FIELD.fence;
    const panel=this.box(7.3,4,1.2,wall,x,2,z);panel.rotation.y=a;
@@ -105,9 +106,9 @@ export class Stadium {
   seats.count=n;fans.count=heads.count=crowd;this.scene.add(seats,fans,heads);
   // Large centre-field board: aligned with home plate and the pitcher.
   const board=new T.Group();board.name='centre-field-scoreboard';board.position.set(0,0,124);this.scene.add(board);
-  this.scoreboardFrame=mat('#96363b',{fog:false});this.box(62,27,2,this.scoreboardFrame,0,25,0,board);
-  this.box(60,25,2.1,new T.MeshBasicMaterial({color:'#10232b',fog:false}),0,25,-.12,board);
-  for(const x of [-23,23])this.box(1.2,12,1.2,dark,x,6,.4,board);
+  this.scoreboardFrame=mat('#96363b',{fog:false});this.box(52,23,2,this.scoreboardFrame,0,25,0,board);
+  this.box(50,21,2.1,new T.MeshBasicMaterial({color:'#10232b',fog:false}),0,25,-.12,board);
+  for(const x of [-23,23])this.box(1.2,14,1.2,dark,x,7,.4,board);
   this.makeScoreboard(board);
   this.box(24,7,2,dark,0,6,112);this.stadiumSign('110',5,1.8,0,4,110.8,0,'#f1e3ac','#183e33');
   // A low building and white peaked canopy beyond the right-field terraces.
@@ -117,12 +118,12 @@ export class Stadium {
   }
   for(const side of [-1,1]){const x=side*110/Math.sqrt(2),z=110/Math.sqrt(2);this.box(.16,18,.16,mat('#dfb936'),x,9,z);}
   for(const x of [-75,75])for(const z of [50,112]){this.box(.45,30,.45,dark,x,15,z);this.box(10,2.8,.6,dark,x,29,z);for(let i=0;i<6;i++)this.box(1.1,1,.2,new T.MeshBasicMaterial({color:'#fff4d0'}),x-4+i*1.6,29,z-.4);}
-  const cloudMat=new T.MeshBasicMaterial({color:'#dae4d9'});for(let i=0;i<9;i++){const cloud=this.mesh(new T.SphereGeometry(1,12,8),cloudMat,-110+i*28,43+(i%3)*7,155);cloud.scale.set(12,2.4,4);}
+
  }
  makeScoreboard(board){
   const canvas=document.createElement('canvas');canvas.width=2048;canvas.height=850;
   const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;texture.anisotropy=Math.min(4,this.renderer.capabilities.getMaxAnisotropy());
-  const face=this.mesh(new T.PlaneGeometry(60,25),new T.MeshBasicMaterial({map:texture,fog:false}),0,25,-1.23,board);face.rotation.y=Math.PI;
+  const face=this.mesh(new T.PlaneGeometry(50,21),new T.MeshBasicMaterial({map:texture,fog:false}),0,25,-1.23,board);face.rotation.y=Math.PI;
   this.scoreboard={canvas,texture,key:null};this.updateScoreboard({runs:0,balls:0,strikes:0,outs:0,bases:[false,false,false]});
  }
  updateScoreboard(state){
@@ -130,7 +131,7 @@ export class Stadium {
   const theme=this.teamTheme||teamTheme(null);this.scoreboard.state={...state,bases:[...state.bases]};
   const {canvas,texture}=this.scoreboard,key=JSON.stringify([state.inning||1,state.runs,state.balls,state.strikes,state.outs,...state.bases,state.batterName||'',state.teamName||'',state.average||'',theme.primary]);if(this.scoreboard.key===key)return;this.scoreboard.key=key;
   const c=canvas.getContext('2d'),text=(str,x,y,size,color='#ffffff',align='left')=>{c.fillStyle=color;c.font=`bold ${size}px sans-serif`;c.textAlign=align;c.textBaseline='middle';c.fillText(str,x,y);};
-  c.fillStyle=theme.ink;c.fillRect(0,0,2048,850);c.fillStyle=theme.primary;c.fillRect(0,0,2048,145);text(state.teamName?`${state.teamName}  ·  ${state.average}`:'PLAY BALL!',1024,74,state.teamName?66:92,theme.onPrimary,'center');
+  c.fillStyle=theme.ink;c.fillRect(0,0,2048,850);c.fillStyle=theme.primary;c.fillRect(0,0,2048,145);text(state.teamName?`${state.teamName}  ·  ${state.average||'—'}`:'PLAY BALL!',1024,74,state.teamName?66:92,theme.onPrimary,'center');
   // Familiar scoreboard labels with plain numerals; player gets a dedicated strip.
   text('INNING',330,235,54,theme.light,'center');text(String(state.inning||1),330,340,154,'#ffffff','center');
   text('RUNS',330,480,54,theme.light,'center');
@@ -154,12 +155,12 @@ export class Stadium {
  }
  makeBackStands(){
   const group=new T.Group();group.name='landers-inspired-infield-bowl';this.scene.add(group);this.backStands=group;
-  const sections=bowlSections(),rows=10,columns=10,dummy=new T.Object3D();
+  const sections=bowlSections(),rows=14,columns=10,dummy=new T.Object3D();
   const concrete=mat('#b1b8ae'),dark=mat('#284b3f'),roofMat=mat('#d2dbd6',{side:T.DoubleSide}),ribbonMat=mat('#a2323b');this.stadiumRibbon=ribbonMat;
   const steps=new T.InstancedMesh(new T.BoxGeometry(1,1,1),concrete,sections.length*rows);
-  const seats=new T.InstancedMesh(new T.BoxGeometry(.58,.65,.65),mat('#386a55'),sections.length*rows*columns);
-  const fans=new T.InstancedMesh(new T.CylinderGeometry(.17,.22,.52,5),mat('#bc3b43'),sections.length*rows*columns);
-  const heads=new T.InstancedMesh(new T.SphereGeometry(.13,6,4),mat('#c99e7a'),sections.length*rows*columns);let seat=0,step=0;
+  const seats=new T.InstancedMesh(seatGeometry(),mat('#ffffff'),sections.length*rows*columns);
+  const fans=new T.InstancedMesh(spectatorGeometry(),mat('#ffffff'),sections.length*rows*columns);
+  const heads=new T.InstancedMesh(new T.SphereGeometry(.105,6,4),mat('#c5a080'),sections.length*rows*columns);let seat=0,step=0,crowd=0;
   const quad=(edge0,edge1,y,material)=>{const [a,b]=edge0,[c,d]=edge1,geo=new T.BufferGeometry().setFromPoints([V(a[0],y,a[1]),V(b[0],y,b[1]),V(d[0],y,d[1]),V(a[0],y,a[1]),V(d[0],y,d[1]),V(c[0],y,c[1])]);geo.computeVertexNormals();group.add(new T.Mesh(geo,material));};
   for(const [i,section] of sections.entries()){
    const {normal}=section,angle=Math.atan2(normal[0],normal[1]),place=(offset)=>{const [a,b]=section.edge(offset);return {x:(a[0]+b[0])/2,z:(a[1]+b[1])/2,width:Math.hypot(b[0]-a[0],b[1]-a[1])};};
@@ -171,17 +172,18 @@ export class Stadium {
    }
    for(const [a,b]of spans){const t=(a+b)/2,wall=this.box(b-a+.04,1.5,.45,dark,wa[0]+tx*t,.75,wa[1]+tz*t,group);wall.rotation.y=angle;}
    for(let row=0;row<rows;row++){
-    const upper=row>=5,offset=5+row*1.8+(upper?2:0),y=2+row*1.45+(upper?3:0),p=place(offset);
-    dummy.position.set(p.x,y,p.z);dummy.rotation.set(0,angle,0);dummy.scale.set(p.width+.12,1.45,2);dummy.updateMatrix();steps.setMatrixAt(step++,dummy.matrix);
+    const upper=row>=7,offset=5+row*1.25+(upper?2:0),y=1.8+row*.90+(upper?2:0),p=place(offset);
+    dummy.position.set(p.x,y,p.z);dummy.rotation.set(0,angle,0);dummy.scale.set(p.width+.12,.90,1.32);dummy.updateMatrix();steps.setMatrixAt(step++,dummy.matrix);
     const [a,b]=section.edge(offset);
-    for(let col=0;col<columns;col++){
-     const u=(col+.5)/columns;dummy.position.set(a[0]+(b[0]-a[0])*u,y+1,a[1]+(b[1]-a[1])*u);dummy.scale.set(1,1,1);dummy.updateMatrix();seats.setMatrixAt(seat,dummy.matrix);seats.setColorAt(seat,new T.Color(row===3||row===7?'#d5b747':'#32624c'));
-     dummy.position.y=y+1.2;dummy.updateMatrix();fans.setMatrixAt(seat,dummy.matrix);fans.setColorAt(seat,new T.Color(['#b63843','#e2d9bd','#324859','#c6cabe','#a5343c'][(i+row+col)%5]));
-     dummy.position.y=y+1.6;dummy.updateMatrix();heads.setMatrixAt(seat,dummy.matrix);seat++;
+    for(let col=1;col<columns-1;col++){
+     const u=(col+.5)/columns,seed=i*1000+row*31+col;dummy.position.set(a[0]+(b[0]-a[0])*u,y+.85,a[1]+(b[1]-a[1])*u);dummy.scale.set(1,1,1);dummy.updateMatrix();seats.setMatrixAt(seat,dummy.matrix);seats.setColorAt(seat,new T.Color(upper?'#3f6577':i%4===0?'#a0886b':'#315663'));seat++;
+     if(parkNoise(seed)<.22)continue;
+     dummy.position.y=y+1.08;dummy.rotation.y=angle+(parkNoise(seed+3)-.5)*.22;dummy.scale.set(1, .90+parkNoise(seed+7)*.18,1);dummy.updateMatrix();fans.setMatrixAt(crowd,dummy.matrix);fans.setColorAt(crowd,new T.Color(CROWD_COLORS[Math.floor(parkNoise(seed+13)*CROWD_COLORS.length)]));
+     dummy.position.y=y+1.43;dummy.updateMatrix();heads.setMatrixAt(crowd,dummy.matrix);crowd++;dummy.rotation.y=angle;
     }
    }
-   const p=place(14),ledge=this.box(p.width+.1,2.8,3.1,dark,p.x,10.2,p.z,group);ledge.rotation.y=angle;
-   const r=place(12.35),ribbon=this.box(r.width+.1,.6,.2,ribbonMat,r.x,11.1,r.z,group);ribbon.rotation.y=angle;
+   const p=place(14),ledge=this.box(p.width+.1,.6,2.7,dark,p.x,9.25,p.z,group);ledge.rotation.y=angle;
+   const r=place(12.6),ribbon=this.box(r.width+.1,.5,.2,ribbonMat,r.x,9.3,r.z,group);ribbon.rotation.y=angle;
    quad(section.edge(0),section.edge(5),.02,concrete);
    if(front.z<58){
     quad(section.edge(11),section.edge(25),22.5,roofMat);
@@ -189,6 +191,7 @@ export class Stadium {
     const l=place(11),light=this.box(l.width*.85,.38,.38,new T.MeshBasicMaterial({color:'#fff0c8'}),l.x,22.3,l.z,group);light.rotation.y=angle;
    }
   }
+  seats.count=seat;fans.count=heads.count=crowd;
   for(const mesh of [steps,seats,fans,heads]){mesh.instanceMatrix.needsUpdate=true;group.add(mesh);}
   for(let i=0;i<7;i++)this.box(.10,5,.10,dark,-9+i*3,2.5,-16,group);this.box(18,.08,.08,dark,0,5,-16,group);
   // Fixed world dimensions, baseline-parallel and recessed under front seating.
@@ -583,19 +586,19 @@ export class Stadium {
   }));
  }
  runningProgress(move,time){return T.MathUtils.clamp((Math.min(time,move.stopAt??Infinity)-move.start-move.delay)/move.travel,0,1);}
- poseRunning(player,step,moving=true,walk=false){
+ poseRunning(player,step,moving=true,walk=false,weight=1){
   // limbs are [left leg, left arm, right leg, right arm]. Opposite arm leads.
   const {limbs,knees=[],elbows=[],torso,hips}=player.userData;
-  const phases=[0,Math.PI,Math.PI,0],amplitude=walk?.42:.60;
+  const phases=[0,Math.PI,Math.PI,0],blend=moving?T.MathUtils.clamp(weight,0,1):0,amplitude=(walk?.42:.60)*blend;
   limbs.forEach((limb,i)=>{limb.rotation.set(moving?Math.sin(step+phases[i])*amplitude:0,0,0);});
-  knees.forEach((k,i)=>k.rotation.set(moving?.12+Math.max(0,-Math.sin(step+i*Math.PI))*(walk?.35:.8):0,0,0));
-  elbows.forEach(e=>e.rotation.set(moving?-(walk?.4:1.0):0,0,0));
-  if(torso)torso.rotation.set(moving?(walk?.04:.12):0,moving?Math.sin(step)*.06:0,0);
-  if(hips)hips.rotation.set(0,moving?-Math.sin(step)*.04:0,0);
+  knees.forEach((k,i)=>k.rotation.set(moving?(.12+Math.max(0,-Math.sin(step+i*Math.PI))**2*(walk?.35:.8))*blend:0,0,0));
+  elbows.forEach(e=>e.rotation.set(moving?-(walk?.4:1.0)*blend:0,0,0));
+  if(torso)torso.rotation.set(moving?(walk?.04:.12)*blend:0,moving?Math.sin(step)*.06*blend:0,0);
+  if(hips)hips.rotation.set(0,moving?-Math.sin(step)*.04*blend:0,0);
   if(player.userData.athlete){
    player.userData.head.rotation.set(0,0,0);limbs[0].position.x=-.105;limbs[2].position.x=.105;
    this.plantAthleteFeet(player);
-   if(moving)torso.rotation.z=Math.sin(step)*(walk?.012:.028);
+   if(moving){torso.rotation.z=Math.sin(step)*(walk?.012:.028)*blend;player.userData.head.rotation.y=-torso.rotation.y*.7;player.userData.elbows.forEach((e,i)=>e.rotation.x+=Math.sin(step+i*Math.PI)*.10*blend);}
   }
  }
  plantAthleteFeet(player){
@@ -675,7 +678,7 @@ export class Stadium {
    const yaw=Math.atan2(ahead.x-p.position.x,ahead.z-p.position.z),turn=T.MathUtils.smoothstep(time-move.start,0,480);
    p.rotation.y=move.rotation+Math.atan2(Math.sin(yaw-move.rotation),Math.cos(yaw-move.rotation))*turn;
    const step=move.distance*t/3.6*Math.PI*2;
-   this.poseRunning(p,step,moving,true);
+   this.poseRunning(p,step,moving,true,Math.min(T.MathUtils.smoothstep(t*move.distance,0,.6),T.MathUtils.smoothstep((1-t)*move.distance,0,.6)));
    if(moving)p.position.y+=Math.abs(Math.sin(step))*.025;
    if(t===1){p.visible=false;p.userData.departing=false;return false;}
    return true;
@@ -692,7 +695,7 @@ export class Stadium {
     const ahead=this.runningPoint(move,Math.min(1,t+.003));move.player.rotation.y=Math.atan2(ahead.x-pos.x,ahead.z-pos.z);
     // Stride follows distance travelled, so jogs and longer routes stay natural.
     const step=move.distance*t/(move.walk?3.6:4)*Math.PI*2;
-    this.poseRunning(move.player,step,true,move.walk);
+    this.poseRunning(move.player,step,true,move.walk,Math.min(T.MathUtils.smoothstep(t*move.distance,0,.8),T.MathUtils.smoothstep((1-t)*move.distance,0,.7)));
     move.player.position.y+=Math.abs(Math.sin(step))*.045;
    }else this.poseRunning(move.player,0,false);
    if((move.out||move.retire)&&finished){this.retireRunner(move,end);move.player.visible=false;}
@@ -742,7 +745,7 @@ export class Stadium {
   const progress=Math.min(1,fielderDistance(t-FIELD.reaction-(fielding.fielder>=4?.12:0))/Math.max(.01,distance));
   f.position.set(base[0]+(target.x-base[0])*progress,0,base[1]+(target.z-base[1])*progress);
   f.rotation.y=Math.atan2(target.x-base[0],target.z-base[1]);
-  if(progress>0&&progress<1)this.poseRunning(f,distance*progress/4*Math.PI*2,true);
+  if(progress>0&&progress<1)this.poseRunning(f,distance*progress/4*Math.PI*2,true,false,T.MathUtils.smoothstep(distance*progress,0,.7));
   const gather=T.MathUtils.smoothstep(t,fielding.time-.32,fielding.time);
   if(gather>0)this.poseFielding(f,t,fielding.caught?'catch':'ground',gather,target.y);
   if(t<fielding.time)return;
@@ -752,9 +755,10 @@ export class Stadium {
   f.rotation.y=Math.atan2(plan.legs[0].to.x-target.x,plan.legs[0].to.z-target.z);
   const release=plan.legs[0].release,load=T.MathUtils.smoothstep(t,fielding.time,release),follow=T.MathUtils.smoothstep(t,release,release+.28);
   if(f.userData.athlete){
-   this.poseRunning(f,0,false);this.poseFielding(f,t,'ready');
+   this.poseRunning(f,0,false);this.poseFielding(f,t,'ready');this.poseFielding(f,t,'ground',1-load);
+   const approach=Math.atan2(target.x-base[0],target.z-base[1]),turn=f.rotation.y;f.rotation.y=approach+Math.atan2(Math.sin(turn-approach),Math.cos(turn-approach))*load;
    f.userData.torso.rotation.y=.35*load-.7*follow;
-   f.userData.limbs[3].rotation.x=-.6-1.8*load+1.6*follow;f.userData.elbows[1].rotation.x=-1.2*(1-follow);
+   f.userData.limbs[3].rotation.x=-.2-2.2*load+1.6*follow;f.userData.elbows[1].rotation.x=-.25-.95*load*(1-follow);
   }else f.userData.limbs[3].rotation.x=t<release?-1.5:-.5;
   for(const l of plan.legs){
    const receiver=l.receiver===7?this.catcher:this.fielders[l.receiver];if(!receiver)continue;
