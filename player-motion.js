@@ -60,3 +60,35 @@ export function walkingLegs(p,step,weight){
   p.userData.limbs[i].rotation.x=thigh*weight;p.userData.knees[j].rotation.x=knee*weight;
  }
 }
+
+// Prepared stances keep both feet anchored. Small knee/hip changes transfer
+// weight without a looping run-in-place or sideways foot sliding.
+export function anticipation(time,phase,pitch){
+ if(phase==='pitch')return 1;
+ if(phase==='windup'&&pitch)return .45+.55*ease((time-pitch.windupAt)/pitch.windup,.25,.95);
+ return ['ready','stance'].includes(phase)?.45:.25;
+}
+export function posePrepared(s,p,time,{runner=false,intensity=.45,offset=0,look=0}={}){
+ const {limbs,knees,elbows,hips,torso,head}=p.userData;
+ if(!hips||!torso||knees?.length!==2||!head)return;
+ s.poseRunning(p,0,false);
+ const breath=Math.sin(time*1.8+offset),load=Math.sin(time*1.05+offset),hipY=.715-(runner?.035:.045)*intensity+.007*breath;
+ hips.position.set(0,hipY,0);hips.rotation.set(0,0,0);torso.position.set(0,hipY+.03,0);
+ const lower=Math.hypot(.41,.055),soleAngle=Math.atan2(.055,.41);
+ for(const [j,i]of [0,2].entries()){
+  const z=runner?.26+(j?-.04:.04):.28,down=hipY-.06,d=Math.hypot(z,down);
+  limbs[i].position.set((j?1:-1)*(runner?.18:.22),0,0);
+  const thigh=-Math.atan2(z,down)-Math.acos(T.MathUtils.clamp((.32**2+d*d-lower**2)/(2*.32*d),-1,1));
+  const knee=Math.PI-Math.acos(T.MathUtils.clamp((.32**2+lower**2-d*d)/(2*.32*lower),-1,1))+soleAngle;
+  limbs[i].rotation.set(thigh,0,0);knees[j].rotation.set(knee,0,0);
+ }
+ torso.rotation.set((runner?.13:.14)+.12*intensity,T.MathUtils.clamp(look,-.7,.7)*.25,load*.012);
+ for(const [j,i]of [1,3].entries()){
+  limbs[i].rotation.set(runner?(j?.12:-.16):-.32-.12*intensity,0,(j?-1:1)*(runner?.08:.12));
+  elbows[j].rotation.set(runner?-.95+load*.035: -.58-.15*intensity,0,0);
+ }
+ head.rotation.set(-torso.rotation.x*.75,T.MathUtils.clamp(look-torso.rotation.y,-1.1,1.1),-torso.rotation.z*.6);
+ const nodes=[hips,torso,head,...limbs,...knees,...elbows];
+ p.userData.preparedPose??=nodes.map(node=>({node,position:new T.Vector3(),rotation:new T.Quaternion()}));
+ for(const saved of p.userData.preparedPose){saved.position.copy(saved.node.position);saved.rotation.copy(saved.node.quaternion);}
+}

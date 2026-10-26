@@ -1,19 +1,19 @@
-import {handPoint,poseBench,poseTransfer,samplePose,walkingLegs} from './player-motion.js?v=104';
-import {loadAthletes,attachAthlete,athleteLOD,bakeAthlete,mergeBench,lowerAthleteParts} from './athlete.js?v=104';
-import {makeBattingGlove,battingArmGeometry} from './first-person.js?v=104';
-import {parkTexture,groundUV,softShadowTexture,seatGeometry,spectatorGeometry,parkNoise,CROWD_COLORS,addParkDetails} from './stadium-art.js?v=104';
-import {teamTheme} from './teams.js?v=104';
-import {followAim} from './contact-window.js?v=104';
+import {handPoint,poseBench,poseTransfer,samplePose,walkingLegs,anticipation,posePrepared} from './player-motion.js?v=105';
+import {loadAthletes,attachAthlete,athleteLOD,bakeAthlete,mergeBench,lowerAthleteParts} from './athlete.js?v=105';
+import {makeBattingGlove,battingArmGeometry} from './first-person.js?v=105';
+import {parkTexture,groundUV,softShadowTexture,seatGeometry,spectatorGeometry,parkNoise,CROWD_COLORS,addParkDetails} from './stadium-art.js?v=105';
+import {teamTheme} from './teams.js?v=105';
+import {followAim} from './contact-window.js?v=105';
 import * as T from './vendor/three.module.min.js';
-import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=104';
-import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=104';
-import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=104';
-import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=104';
-import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=104';
-import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition,homeRunDefensePlans,homeRunDefensePosition} from './fielding.js?v=104';
-import {sampleTrajectory} from './trajectory.js?v=104';
-export {BASES} from './field.js?v=104';
-import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=104';
+import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=105';
+import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=105';
+import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=105';
+import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=105';
+import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=105';
+import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition,homeRunDefensePlans,homeRunDefensePosition} from './fielding.js?v=105';
+import {sampleTrajectory,groundSurface} from './trajectory.js?v=105';
+export {BASES} from './field.js?v=105';
+import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=105';
 const V=(x,y,z)=>new T.Vector3(x,y,z);
 const stand=n=>[BASES[n][0]+(n===2?1.8:n===1?.5:-.5),.04,BASES[n][2]-.25];
 const mat=(color,extra={})=>new T.MeshStandardMaterial({color,roughness:.9,...extra});
@@ -44,6 +44,7 @@ export class Stadium {
   const ballMat=mat('#fffbe7',{roughness:.75,transparent:true});this.ball=new T.Group();this.ball.add(new T.Mesh(new T.SphereGeometry(DISPLAY_BALL_RADIUS,16,12),ballMat));
   for(const s of [-1,1]){const curve=new T.EllipseCurve(0,0,.074,.076,-1.5,1.5,false);const pts=curve.getPoints(25).map(p=>V(s*(p.x-.029)*.446,p.y*.446,.044*.446));this.ball.add(new T.Line(new T.BufferGeometry().setFromPoints(pts),new T.LineBasicMaterial({color:'#b14c40',transparent:true})));}
   this.ballMaterials=this.ball.children.map(o=>o.material);this.ball.visible=false;this.scene.add(this.ball);
+  this.ballShadow=this.mesh(new T.CircleGeometry(.10,16),this.shadowMat.clone());this.ballShadow.rotation.x=-Math.PI/2;this.ballShadow.visible=false;
   this.makeZone();this.makeBat();this.makeSwingMark();this.makeBatterBody();this.moves=[];this.staticBases=[false,false,false];this.hit=null;
   this.labelEls=[1,2,3].map(n=>document.getElementById('runner'+n));
   this.resizeObserver=new ResizeObserver(()=>this.resize());this.resizeObserver.observe(canvas);this.resize();
@@ -473,11 +474,21 @@ export class Stadium {
   this.camera.updateMatrixWorld(true);
  }
  updateBallDisplay(time,phase){
-  this.ball.scale.setScalar(1);
+  this.ball.scale.setScalar(1);if(this.ballShadow)this.ballShadow.visible=false;
   if(phase!=='result'||!this.hit||!this.ball.visible)return;
-  const depth=-this.ball.position.clone().applyMatrix4(this.camera.matrixWorldInverse).z;
+  const physical=this.ball.position.clone();if(this.ball.userData.groundedFlight&&!this.ball.userData.held)physical.y=this.ball.userData.trajectoryY;
+  const depth=-physical.applyMatrix4(this.camera.matrixWorldInverse).z;
   const target=this.ball.userData.held?1:1+(battedBallScale(depth,this.h,this.camera.fov)-1)*(this.ball.userData.flightWeight??1),u=T.MathUtils.smoothstep(time-this.hit.start,0,BATTED_BALL_VIEW.easeMs);
   this.ball.scale.setScalar(1+(target-1)*u);
+  if(this.ballShadow&&!this.ball.userData.held){
+   const ground=groundSurface(this.ball.position.x,this.ball.position.z).height,rawY=this.ball.userData.groundedFlight?this.ball.userData.trajectoryY:this.ball.position.y,height=Math.max(0,rawY-DISPLAY_BALL_RADIUS);
+   this.ballShadow.visible=height<8;this.ballShadow.position.set(this.ball.position.x,ground+.006,this.ball.position.z);
+   this.ballShadow.scale.setScalar((1+height*.24)*Math.sqrt(this.ball.scale.x));this.ballShadow.material.opacity=.5*(1-T.MathUtils.smoothstep(height,0,8));
+   // Keep the enlarged display sphere above the surface as it rolls. The
+   // trajectory used by the rules and glove transfer remains unmodified.
+   if(this.ball.userData.groundedFlight)this.ball.position.y=rawY+ground*(1-T.MathUtils.smoothstep(height,.1,.6));
+   this.ball.position.y=Math.max(this.ball.position.y,ground+DISPLAY_BALL_RADIUS*this.ball.scale.x);
+  }
  }
  renderFirstPersonScene(phase){
   const hidden=[],hide=object=>{if(object?.visible){hidden.push(object);object.visible=false;}};
@@ -591,6 +602,9 @@ export class Stadium {
   limbs.forEach((limb,i)=>{limb.rotation.set(moving?Math.sin(step+phases[i])*amplitude:0,0,0);});
   knees.forEach((k,i)=>k.rotation.set(moving?(.12+Math.max(0,-Math.sin(step+i*Math.PI))**2*(walk?.55:.8))*blend:0,0,0));
   elbows.forEach(e=>e.rotation.set(moving?-(walk?.16:1.0)*blend:0,0,0));
+  if(hips){hips.position.set(0,.79,0);limbs[0].position.x=-.105;limbs[2].position.x=.105;}
+  if(torso)torso.position.set(0,.82,0);
+  if(player.userData.head)player.userData.head.rotation.set(0,0,0);
   if(torso)torso.rotation.set(moving?(walk?.04:.12)*blend:0,moving?Math.sin(step)*.06*blend:0,0);
   if(hips)hips.rotation.set(0,moving?-Math.sin(step)*.04*blend:0,0);
   if(player.userData.athlete){
@@ -599,6 +613,8 @@ export class Stadium {
    this.plantAthleteFeet(player);
    if(moving){torso.rotation.z=Math.sin(step)*(walk?.018:.028)*blend;player.userData.head.rotation.y=-torso.rotation.y*.7;player.userData.elbows.forEach((e,i)=>e.rotation.x+=Math.sin(step+i*Math.PI)*.10*blend);}
   }
+  // Ease out of the loaded stance as the first stride gathers speed.
+  if(moving&&blend<1)for(const saved of player.userData.preparedPose??[]){saved.node.position.lerpVectors(saved.position,saved.node.position,blend);saved.node.quaternion.slerp(saved.rotation,1-blend);}
  }
  plantAthleteFeet(player){
   const {limbs,knees,hips,torso}=player.userData;
@@ -683,8 +699,15 @@ export class Stadium {
    return true;
   });
  }
- updateRunners(time){
+ poseBaseRunner(player,base,time,phase,pitch){
+  const next=BASES[Math.min(4,base+1)],yaw=Math.atan2(next[0]-player.position.x,next[2]-player.position.z),towardPitcher=Math.atan2(-player.position.x,18.44-player.position.z);
+  player.rotation.set(0,yaw,0);
+  posePrepared(this,player,time/1000,{runner:true,intensity:anticipation(time,phase,pitch),offset:base*1.9,look:Math.atan2(Math.sin(towardPitcher-yaw),Math.cos(towardPitcher-yaw))});
+ }
+ updateRunners(time,phase='ready',pitch=null){
   this.updateDepartures(time);
+  const moving=new Set(this.moves.map(move=>move.player));
+  this.runners.forEach((p,i)=>{if(i<3&&p.visible&&!moving.has(p))this.poseBaseRunner(p,i+1,time,phase,pitch);});
   if(!this.moves.length)return;
   let done=true;
   for(const move of this.moves){
@@ -696,11 +719,12 @@ export class Stadium {
     const step=move.distance*t/(move.walk?3.6:4)*Math.PI*2;
     this.poseRunning(move.player,step,true,move.walk,Math.min(T.MathUtils.smoothstep(t*move.distance,0,.8),T.MathUtils.smoothstep((1-t)*move.distance,0,.7)));
     move.player.position.y+=Math.abs(Math.sin(step))*.045;
-   }else this.poseRunning(move.player,0,false);
+   }else if(!move.out&&!move.retire&&(t>=1?move.to:move.from)>0&&(t>=1?move.to:move.from)<4)this.poseBaseRunner(move.player,t>=1?move.to:move.from,time,phase,pitch);
+   else this.poseRunning(move.player,0,false);
    if((move.out||move.retire)&&finished){this.retireRunner(move,end);move.player.visible=false;}
    else if(t>=1&&move.to>=4)move.player.visible=false;
   }
-  if(done)this.setBases(this.staticBases);
+  if(done){this.setBases(this.staticBases);this.runners.forEach((p,i)=>{if(i<3&&p.visible)this.poseBaseRunner(p,i+1,time,phase,pitch);});}
  }
  runnerAt(progress){progress=Math.max(0,Math.min(4,progress));const a=Math.min(4,Math.floor(progress)),b=Math.min(4,a+1),f=progress-a;return V(BASES[a][0]+(BASES[b][0]-BASES[a][0])*f,.04,BASES[a][2]+(BASES[b][2]-BASES[a][2])*f);}
  pitchPosition(p,t){const q=pitchState(p,(t-1)*p.duration).position;return V(q.x,q.y,q.z);}
@@ -736,6 +760,7 @@ export class Stadium {
   h.renderedThrough=t;
   if(t>h.animationTime+(h.homeRun?1.2:.25)){this.hit=null;return;}
   const point=sampleTrajectory(h.samples,Math.min(t,fielding?.time??Infinity));
+  this.ball.userData.groundedFlight=!fielding||t<fielding.time-.18;this.ball.userData.trajectoryY=point.y;
   this.ball.userData.held=false;this.ball.userData.flightWeight=1;this.ball.position.set(point.x,point.y,point.z);this.ball.rotation.x=t*35;this.ball.visible=t<h.animationTime;
   if(!fielding){if(h.homeRun)this.drawHomeRunDefense(h,t);return;}
   this.drawSupportDefense(h,t);
@@ -899,12 +924,15 @@ export class Stadium {
    pitch.lastRenderedError=visual.error;
    this.ball.position.copy(this.pitchPosition(pitch,visual.t));this.ball.rotation.set(visual.t*26,visual.t*15,0);
   }
-  this.fielders.forEach((f,i)=>{f.position.set(FIELDERS[i][0],0,FIELDERS[i][1]);this.poseRunning(f,0,false);if(['windup','pitch'].includes(phase))this.poseFielding(f,time/1000);else this.poseIdle(f,time/1000,i);});
+  this.fielders.forEach((f,i)=>{
+   f.position.set(FIELDERS[i][0],0,FIELDERS[i][1]);f.rotation.set(0,Math.atan2(-f.position.x,-f.position.z),0);this.poseRunning(f,0,false);
+   posePrepared(this,f,time/1000,{intensity:anticipation(time,phase,pitch)*(i<4?1:.7),offset:i*1.37});
+  });
   if(this.catcher){this.catcher.position.set(0,0,-2);this.poseRunning(this.catcher,0,false);this.poseFielding(this.catcher,time/1000,'crouch');}
   const soundingHit=this.hit;
   if(this.hit)this.drawHit(time);
   if(this.hit)this.rememberDefense(time);else this.returnDefense(time,phase);
-  this.updateRunners(time);
+  this.updateRunners(time,phase,pitch);
   this.updateFollowView(time,phase);
   this.emitCatchSounds(soundingHit,time);
   this.updateBallDisplay(time,phase);
