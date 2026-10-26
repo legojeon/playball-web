@@ -1,9 +1,9 @@
 import * as T from './vendor/three.module.min.js';
-import {inZone} from './pitch.js?v=99';
-import {Stadium} from './stadium.js?v=99';
-import {bindReleaseInput} from './input.js?v=99';
-import {assistedContact,reachableAim} from './collision.js?v=99';
-import {localPoint,screenPoint} from './aiming.js?v=99';
+import {inZone} from './pitch.js?v=100';
+import {Stadium} from './stadium.js?v=100';
+import {bindReleaseInput} from './input.js?v=100';
+import {assistedContact,reachableAim} from './collision.js?v=100';
+import {localPoint,screenPoint} from './aiming.js?v=100';
 const $=id=>document.getElementById(id),scene=new Stadium($('field'));
 const targets=[[0,1.02],[-.25,.72],[.25,1.32],[-.25,1.32],[.25,.72],[0,1.32],[0,.72]];
 let mode='fixed',index=0,pitch,heldTime=null,lastPaint=-Infinity,done=false;

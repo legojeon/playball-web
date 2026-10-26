@@ -56,9 +56,9 @@ export function athleteLOD(player,camera){
  skin.near.visible=!far;skin.far.visible=far;
 }
 // Static bench poses share a mesh per material; skinning is baked only at load.
-export function bakeAthlete(player){
+export function bakeAthlete(player,detail='far'){
  const result=[];player.updateMatrixWorld(true);
- for(const mesh of player.userData.athlete.far.children){
+ for(const mesh of player.userData.athlete[detail].children){
   mesh.skeleton.update();const geometry=mesh.geometry.clone(),position=geometry.attributes.position;
   const point=new T.Vector3();
   for(let i=0;i<position.count;i++){
@@ -75,4 +75,29 @@ export function mergeBench(poses){
   group.add(new T.Mesh(geometry,poses[0][i].material));geometries.forEach(g=>g.dispose());
  }
  return group;
+}
+
+// Reuse the authored trousers, belt, laces and cleats for the first-person body.
+export function lowerAthleteParts(assets){
+ const parts=[];
+ for(const part of assets.near){
+  if(!['pants','shoe','trim','white'].includes(part.name))continue;
+  const g=part.geometry,position=g.attributes.position,index=g.index,kept=[];
+  for(let i=0;i<(index?.count??position.count);i+=3){
+   const ids=[0,1,2].map(j=>index?index.getX(i+j):i+j);
+   if(ids.every(n=>position.getY(n)<.84))kept.push(...ids);
+  }
+  if(!kept.length)continue;
+  // Compact vertices without splitting the shared vertices needed for smooth normals.
+  const lookup=new Map(),vertices=[],indices=kept.map(old=>{
+   if(!lookup.has(old)){lookup.set(old,vertices.length);vertices.push(old);}return lookup.get(old);
+  }),geometry=new T.BufferGeometry();geometry.setIndex(indices);
+  for(const [name,a]of Object.entries(g.attributes)){
+   const data=name==='skinIndex'?new Uint16Array(vertices.length*a.itemSize):new Float32Array(vertices.length*a.itemSize);
+   vertices.forEach((old,i)=>{for(let c=0;c<a.itemSize;c++)data[i*a.itemSize+c]=a[['getX','getY','getZ','getW'][c]](old);});
+   geometry.setAttribute(name,new T.BufferAttribute(data,a.itemSize));
+  }
+  parts.push({...part,geometry});
+ }
+ return {near:parts,far:[]};
 }

@@ -1,16 +1,17 @@
-import {loadAthletes,attachAthlete,athleteLOD,bakeAthlete,mergeBench} from './athlete.js?v=99';
-import {teamTheme} from './teams.js?v=99';
-import {followAim} from './contact-window.js?v=99';
+import {loadAthletes,attachAthlete,athleteLOD,bakeAthlete,mergeBench,lowerAthleteParts} from './athlete.js?v=100';
+import {makeBattingGlove,battingArmGeometry} from './first-person.js?v=100';
+import {teamTheme} from './teams.js?v=100';
+import {followAim} from './contact-window.js?v=100';
 import * as T from './vendor/three.module.min.js';
-import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=99';
-import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=99';
-import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=99';
-import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=99';
-import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=99';
-import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition} from './fielding.js?v=99';
-import {sampleTrajectory} from './trajectory.js?v=99';
-export {BASES} from './field.js?v=99';
-import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=99';
+import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=100';
+import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=100';
+import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=100';
+import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=100';
+import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=100';
+import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition} from './fielding.js?v=100';
+import {sampleTrajectory} from './trajectory.js?v=100';
+export {BASES} from './field.js?v=100';
+import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=100';
 const V=(x,y,z)=>new T.Vector3(x,y,z);
 const stand=n=>[BASES[n][0]+(n===2?1.8:n===1?.5:-.5),.04,BASES[n][2]-.25];
 const mat=(color,extra={})=>new T.MeshStandardMaterial({color,roughness:.9,...extra});
@@ -45,7 +46,7 @@ export class Stadium {
   this.labelEls=[1,2,3].map(n=>document.getElementById('runner'+n));
   this.resizeObserver=new ResizeObserver(()=>this.resize());this.resizeObserver.observe(canvas);this.resize();
   this.playerReady=loadAthletes().then(assets=>{
-   this.playerAssets=assets;
+   this.playerAssets=assets;this.upgradeBatterBody(assets);
    for(const player of this.players)attachAthlete(player,assets,this.materials,player.userData.home);
    for(const {group,home} of this.benches){const old=group.getObjectByName(home?'home-bench-players':'away-bench-players');old?.removeFromParent();old?.traverse(m=>m.geometry?.dispose());this.populateDugout(group,home,true);}
   }).catch(error=>{console.warn('Player model could not load; using the bundled fallback.',error);});
@@ -295,7 +296,7 @@ export class Stadium {
  }
  makeBat(){
   this.bat=makeBatShape(mat('#cfa568'));const glove=mat('#dfe7d1');this.grips=[];
-  for(let i=0;i<2;i++){const g=this.mesh(new T.SphereGeometry(.047,10,8),glove,0,-.065+i*.095,.012,this.bat);g.scale.set(1.3,1,.9);this.grips.push(g);}
+  for(let i=0;i<2;i++){const g=makeBattingGlove(glove,i);g.position.set(0,-.065+i*.095,.012);this.bat.add(g);this.grips.push(g);}
   this.scene.add(this.bat);this.scene.add(this.camera);this.bat.visible=false;
   this.aimPreview=new T.Group();this.aimPreview.visible=false;this.scene.add(this.aimPreview);
   const material=new T.MeshBasicMaterial({color:'#77e6ff',transparent:true,opacity:.33,depthWrite:false,depthTest:false});
@@ -363,7 +364,26 @@ export class Stadium {
    this.box(.13,.02,.17,m.line,.72,.177,z,this.batterBody);
    const sh=this.mesh(new T.CircleGeometry(.21,18),this.shadowMat,.8,.048,z,this.batterBody);sh.rotation.x=-Math.PI/2;
   }
-  this.forearms=[0,1].map(()=>[this.mesh(new T.CylinderGeometry(1,1,1,10),m.runner||m.jersey,0,0,0,this.scene),this.mesh(new T.CylinderGeometry(1,1,1,10),m.skin,0,0,0,this.scene)]);
+  this.forearms=[0,1].map(()=>[this.mesh(battingArmGeometry(true),m.runner||m.jersey,0,0,0,this.scene),this.mesh(battingArmGeometry(false),m.skin,0,0,0,this.scene)]);
+ }
+ upgradeBatterBody(assets){
+  const lower=lowerAthleteParts(assets),saved=this.playerAssets;
+  // Build only the lower body on a temporary rig; no extra live actor or head.
+  this.playerAssets=null;const player=this.makePlayer(true);this.playerAssets=saved;
+  this.players.splice(this.players.indexOf(player),1);attachAthlete(player,lower,this.materials,true);
+  player.position.set(.86,0,-.80);player.rotation.y=-Math.PI/2;
+  const {limbs,knees}=player.userData;
+  limbs[0].rotation.z=-.40;limbs[2].rotation.z=.40;
+  for(const i of [0,2])limbs[i].rotation.x=-.22;
+  knees.forEach(k=>k.rotation.x=.44);
+  player.updateMatrixWorld(true);player.position.y+=.045-Math.min(...knees.map(k=>k.localToWorld(V(0,-.41,.055)).y));
+  const parts=bakeAthlete(player,'near');
+  // Keep the existing visibility container and its contact shadows.
+  for(const child of [...this.batterBody.children])if(child.geometry?.type!=='CircleGeometry'){child.removeFromParent();child.geometry?.dispose();}
+  for(const part of parts){const mesh=new T.Mesh(part.geometry,part.material);mesh.name='batter-'+part.name;this.batterBody.add(mesh);}
+  this.batterBody.userData.athlete=true;
+  const skeletons=new Set();player.traverse(m=>{if(m.skeleton)skeletons.add(m.skeleton);});skeletons.forEach(s=>s.dispose());
+  lower.near.forEach(p=>p.geometry.dispose());player.userData.shadow.geometry.dispose();
  }
  beginStance(time){this.manualLook=null;this.stanceAt=time;this.followRun=null;this.followRotation=null;this.followReturn=null;if(this.staticBases)this.setBases(this.staticBases);}
  beginTour(time){this.beginStance(time);this.tourAt=time;}

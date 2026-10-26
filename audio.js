@@ -1,6 +1,6 @@
 // Keep catches within 3m at catcher volume, then soften with world-space distance.
 export const fieldCatchGain=distance=>1/(1+Math.max(0,distance-3)/14);
-import {musicStore,musicName,validateMusicFile,validateMusicBudget,musicStorageError} from './music-library.js?v=99';
+import {musicStore,musicName,validateMusicFile,validateMusicBudget,musicStorageError} from './music-library.js?v=100';
 export const CHEER_TRACKS=[];
 export const ANTHEM_TRACKS=[];
 export const CROWD_ASSETS=[['crowd-ambience','./audio/crowd-ambience.wav'],['crowd-reaction','./audio/crowd-reaction.mp3']];
@@ -38,7 +38,7 @@ export function chooseCheer(tracks,lastId){
 }
 export class GameAudio {
  constructor({random=Math.random,cheers=CHEER_TRACKS,anthems=ANTHEM_TRACKS,store=musicStore}={}){this.ambience=null;this.crowdReaction=null;this.crowdSources=new Set();this.random=random;this.musicEnabled=true;this.musicVolume=1;this.crowdEnabled=true;this.crowdVolume=1;this.crowdGain=null;this.musicGain=null;this.anthem=null;this.cheerOrder=shuffleCheers(cheers,random);this.anthemTracks=[...anthems];this.store=store;this.library=[];this.libraryError='';this.libraryReady=store.list().then(records=>{this.library=records;return records;}).catch(()=>{this.libraryError='저장된 응원가를 읽지 못했어요. 기기의 저장 공간 설정을 확인해 주세요.';return [];});this.enabled=true;this.context=null;this.buffers={};this.sources=new Set();this.cheer=null;this.lastCheer=null;
-  const assets=[...['bat-hit','glove'].map(name=>[name,'./audio/'+name+'.mp3'+(name==='bat-hit'?'?v=99':'')]),...cheers.filter(t=>t.src).map(t=>['cheer:'+t.id,t.src]),...anthems.filter(t=>t.src).map(t=>['anthem:'+t.id,t.src]),...CROWD_ASSETS];
+  const assets=[...['bat-hit','glove'].map(name=>[name,'./audio/'+name+'.mp3'+(name==='bat-hit'?'?v=100':'')]),...cheers.filter(t=>t.src).map(t=>['cheer:'+t.id,t.src]),...anthems.filter(t=>t.src).map(t=>['anthem:'+t.id,t.src]),...CROWD_ASSETS];
   this.data=Promise.all(assets.map(async ([name,url])=>{try{const r=await fetch(url);if(!r.ok)throw new Error('audio');return[name,await r.arrayBuffer()];}catch{return[name,null];}}));
  }
  async unlock({resume=true}={}){
