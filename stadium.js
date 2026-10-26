@@ -1,22 +1,24 @@
-import {handPoint,poseBench,poseTransfer,samplePose,walkingLegs,anticipation,posePrepared} from './player-motion.js?v=105';
-import {loadAthletes,attachAthlete,athleteLOD,bakeAthlete,mergeBench,lowerAthleteParts} from './athlete.js?v=105';
-import {makeBattingGlove,battingArmGeometry} from './first-person.js?v=105';
-import {parkTexture,groundUV,softShadowTexture,seatGeometry,spectatorGeometry,parkNoise,CROWD_COLORS,addParkDetails} from './stadium-art.js?v=105';
-import {teamTheme} from './teams.js?v=105';
-import {followAim} from './contact-window.js?v=105';
+import {handPoint,poseBench,poseTransfer,samplePose,walkingLegs,anticipation,posePrepared} from './player-motion.js?v=106';
+import {loadAthletes,attachAthlete,athleteLOD,bakeAthlete,mergeBench,lowerAthleteParts} from './athlete.js?v=106';
+import {makeBattingGlove,battingArmGeometry} from './first-person.js?v=106';
+import {parkTexture,groundUV,softShadowTexture,seatGeometry,spectatorGeometry,parkNoise,CROWD_COLORS,addParkDetails} from './stadium-art.js?v=106';
+import {teamTheme} from './teams.js?v=106';
+import {followAim} from './contact-window.js?v=106';
 import * as T from './vendor/three.module.min.js';
-import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=105';
-import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=105';
-import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=105';
-import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=105';
-import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=105';
-import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition,homeRunDefensePlans,homeRunDefensePosition} from './fielding.js?v=105';
-import {sampleTrajectory,groundSurface} from './trajectory.js?v=105';
-export {BASES} from './field.js?v=105';
-import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=105';
+import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=106';
+import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=106';
+import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=106';
+import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=106';
+import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=106';
+import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition,homeRunDefensePlans,homeRunDefensePosition} from './fielding.js?v=106';
+import {sampleTrajectory,groundSurface} from './trajectory.js?v=106';
+export {BASES} from './field.js?v=106';
+import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=106';
 const V=(x,y,z)=>new T.Vector3(x,y,z);
 const stand=n=>[BASES[n][0]+(n===2?1.8:n===1?.5:-.5),.04,BASES[n][2]-.25];
 const mat=(color,extra={})=>new T.MeshStandardMaterial({color,roughness:.9,...extra});
+// Every player role, including the first-person body source and bench, uses this scale.
+export const PLAYER_SCALE=1;
 export const STADIUM_TOUR={orbit:8000,settle:1600,duration:9600};
 // CSS-pixel readability for batted/returned balls; physics and pitched-ball size
 // remain unchanged. Limit world enlargement and ease it in after impact.
@@ -36,11 +38,11 @@ export class Stadium {
   this.scene.add(new T.HemisphereLight('#ecf3ff','#657452',1.45));const sun=new T.DirectionalLight('#fff0db',2.4);sun.position.set(-30,60,-10);this.scene.add(sun);
   this.materials={grass:mat('#538769'),dirt:mat('#bd9473'),line:mat('#f2ebcf'),jersey:mat('#ecebde'),helmet:mat('#243e51'),skin:mat('#c79975'),pants:mat('#dddcca'),shoe:mat('#24383b'),runner:mat('#c8323b')};
   this.materials.runnerHelmet=this.materials.helmet.clone();
-  this.makeField();this.makeStadium();this.makeBackStands();addParkDetails(this);this.pitcher=this.makePlayer(false);this.pitcher.position.set(0,.23,18.44);this.pitcher.rotation.y=Math.PI;this.pitcher.scale.setScalar(1.15);this.scene.add(this.pitcher);
+  this.makeField();this.makeStadium();this.makeBackStands();addParkDetails(this);this.pitcher=this.makePlayer(false);this.pitcher.position.set(0,.23,18.44);this.pitcher.rotation.y=Math.PI;this.scene.add(this.pitcher);
   this.pitcherFootShadows=[0,1].map(()=>{const m=this.mesh(new T.CircleGeometry(.18,18),this.shadowMat.clone());m.rotation.x=-Math.PI/2;return m;});
   this.fielders=[];for(const [x,z] of FIELDERS){const p=this.makePlayer(false);p.position.set(x,0,z);p.rotation.y=Math.PI;this.scene.add(p);this.fielders.push(p);}
   this.catcher=this.makePlayer(false);this.catcher.position.set(0,0,-2);this.scene.add(this.catcher);
-  this.runners=Array.from({length:4},()=>{const p=this.makePlayer(true);p.visible=false;p.scale.setScalar(1.18);this.scene.add(p);return p;});
+  this.runners=Array.from({length:4},()=>{const p=this.makePlayer(true);p.visible=false;this.scene.add(p);return p;});
   const ballMat=mat('#fffbe7',{roughness:.75,transparent:true});this.ball=new T.Group();this.ball.add(new T.Mesh(new T.SphereGeometry(DISPLAY_BALL_RADIUS,16,12),ballMat));
   for(const s of [-1,1]){const curve=new T.EllipseCurve(0,0,.074,.076,-1.5,1.5,false);const pts=curve.getPoints(25).map(p=>V(s*(p.x-.029)*.446,p.y*.446,.044*.446));this.ball.add(new T.Line(new T.BufferGeometry().setFromPoints(pts),new T.LineBasicMaterial({color:'#b14c40',transparent:true})));}
   this.ballMaterials=this.ball.children.map(o=>o.material);this.ball.visible=false;this.scene.add(this.ball);
@@ -248,7 +250,7 @@ export class Stadium {
   if(canvas){const c=canvas.getContext('2d');c.fillStyle=theme.primary;c.fillRect(0,0,canvas.width,canvas.height);c.fillStyle=theme.onPrimary;c.font='bold 80px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText(team?.name||'HOME TEAM',canvas.width/2,canvas.height/2,canvas.width-50);texture.needsUpdate=true;}
  }
  makePlayer(runner){
-  const m=this.materials,p=new T.Group();const jersey=runner?m.runner:m.jersey,helmet=runner?(m.runnerHelmet||m.helmet):m.helmet;
+  const m=this.materials,p=new T.Group();p.scale.setScalar(PLAYER_SCALE);const jersey=runner?m.runner:m.jersey,helmet=runner?(m.runnerHelmet||m.helmet):m.helmet;
   const torso=new T.Bone();torso.position.y=.82;p.add(torso);
   const hips=new T.Bone();hips.position.y=.79;p.add(hips);
   const shirt=this.mesh(new T.CylinderGeometry(.23,.19,.58,10),jersey,0,.24,0,torso);shirt.scale.z=.70;
@@ -668,7 +670,7 @@ export class Stadium {
   move.departed=true;
   this.departures??=[];this.departurePool??=[];
   let player=this.departurePool.find(p=>!p.userData.departing);
-  if(!player){player=this.makePlayer(true);player.scale.setScalar(1.18);this.scene?.add(player);this.departurePool.push(player);}
+  if(!player){player=this.makePlayer(true);this.scene?.add(player);this.departurePool.push(player);}
   player.userData.departing=true;player.visible=true;player.rotation.copy(move.player.rotation);
   const exit=this.departurePlan(move,time);exit.player=player;exit.rotation=player.rotation.y;
   player.position.copy(exit.path[0]);
