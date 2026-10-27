@@ -1,7 +1,7 @@
 {
   "app": "playball",
-  "version": "1.0.40",
-  "webVersion": 111,
-  "androidVersionCode": 41,
-  "sourceHash": "3c580efb0dc16b09f41791d8daf03b5970dfa79942d26c5f15400f13a4a846cc"
+  "version": "1.0.41",
+  "webVersion": 112,
+  "androidVersionCode": 42,
+  "sourceHash": "57e9eaf267843d9c5fba82108b3fe104828028f8959b5d900e767a2f0c164670"
 }

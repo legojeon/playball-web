@@ -1,19 +1,19 @@
-import {handPoint,poseBench,poseTransfer,samplePose,walkingLegs,sprintPose,RUN_STRIDE,anticipation,posePrepared} from './player-motion.js?v=111';
-import {loadAthletes,attachAthlete,athleteLOD,bakeAthlete,mergeBench,lowerAthleteParts} from './athlete.js?v=111';
-import {makeBattingGlove,battingArmGeometry} from './first-person.js?v=111';
-import {parkTexture,groundUV,softShadowTexture,seatGeometry,spectatorGeometry,parkNoise,CROWD_COLORS,addParkDetails} from './stadium-art.js?v=111';
-import {teamTheme} from './teams.js?v=111';
-import {followAim} from './contact-window.js?v=111';
+import {handPoint,presentGlove,poseCatcher,reachHand,poseBench,poseTransfer,samplePose,walkingLegs,sprintPose,RUN_STRIDE,anticipation,posePrepared} from './player-motion.js?v=112';
+import {loadAthletes,attachAthlete,athleteLOD,bakeAthlete,mergeBench,lowerAthleteParts} from './athlete.js?v=112';
+import {makeBattingGlove,battingArmGeometry} from './first-person.js?v=112';
+import {parkTexture,groundUV,softShadowTexture,seatGeometry,spectatorGeometry,parkNoise,CROWD_COLORS,addParkDetails} from './stadium-art.js?v=112';
+import {teamTheme} from './teams.js?v=112';
+import {followAim} from './contact-window.js?v=112';
 import * as T from './vendor/three.module.min.js';
-import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=111';
-import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=111';
-import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=111';
-import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=111';
-import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=111';
-import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition,homeRunDefensePlans,homeRunDefensePosition} from './fielding.js?v=111';
-import {sampleTrajectory,groundSurface} from './trajectory.js?v=111';
-export {BASES} from './field.js?v=111';
-import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=111';
+import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=112';
+import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=112';
+import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=112';
+import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=112';
+import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=112';
+import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition,homeRunDefensePlans,homeRunDefensePosition} from './fielding.js?v=112';
+import {sampleTrajectory,groundSurface} from './trajectory.js?v=112';
+export {BASES} from './field.js?v=112';
+import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=112';
 const V=(x,y,z)=>new T.Vector3(x,y,z);
 const stand=n=>[BASES[n][0]+(n===2?1.8:n===1?.5:-.5),.04,BASES[n][2]-.25];
 const mat=(color,extra={})=>new T.MeshStandardMaterial({color,roughness:.9,...extra});
@@ -541,7 +541,8 @@ export class Stadium {
   const a=poses[i],b=poses[i+1],before=poses[Math.max(0,i-1)],after=poses[Math.min(poses.length-1,i+2)],u=(t-a.t)/(b.t-a.t),v={};
   const curve=(x,y,prev,next)=>{const span=b.t-a.t,m0=i?(y-prev)/(b.t-before.t)*span:0,m1=i<poses.length-2?(next-x)/(after.t-a.t)*span:0;return (2*u**3-3*u*u+1)*x+(u**3-2*u*u+u)*m0+(-2*u**3+3*u*u)*y+(u**3-u*u)*m1;};
   for(const key of Object.keys(a))v[key]=Array.isArray(a[key])?a[key].map((x,j)=>curve(x,b[key][j],before[key][j],after[key][j])):curve(a[key],b[key],before[key],after[key]);
-  const p=this.pitcher,{limbs:l,elbows:e,knees:k,torso,hips,head}=p.userData;
+  const p=this.pitcher; p.userData.hands?.forEach(h=>h.rotation.set(0,0,0));
+  const {limbs:l,elbows:e,knees:k,torso,hips,head}=p.userData;
   p.position.set(0,.23,18.44-v.travel);p.rotation.set(0,Math.PI,0);
   hips.position.set(0,.79,0);torso.position.set(0,.82,0);l[0].position.x=-.105;l[2].position.x=.105;
   hips.rotation.y=v.hip;torso.rotation.set(v.lean,v.chest,-.05*Math.sin(Math.min(1,t)*Math.PI));head.rotation.set(0,-v.chest*.85,0);
@@ -551,6 +552,11 @@ export class Stadium {
    upper.quaternion.copy(direction(key));elbow.quaternion.copy(upper.quaternion).invert().multiply(direction(fore));
   };
   arm(l[3],e[1],'arm','fore');arm(l[1],e[0],'glove','gf');
+  // Set position: glove covers the ball hand, then separates into the delivery.
+  const joined=1-T.MathUtils.smoothstep(t,.30,.62)+T.MathUtils.smoothstep(t,1.85,2.35);
+  if(joined>0){const qa=l[1].quaternion.clone(),qe=e[0].quaternion.clone();reachHand(p,0,handPoint(p,1));l[1].quaternion.slerp(qa,1-joined);e[0].quaternion.slerp(qe,1-joined);}
+  presentGlove(p);
+
   // Keep the supporting sole on the mound as the stride lowers the hips.
   p.updateMatrixWorld(true);
   const soles=k.map(j=>j.localToWorld(V(0,-.41,.055)));
@@ -599,6 +605,7 @@ export class Stadium {
  poseRunning(player,step,moving=true,walk=false,weight=1){
   // limbs are [left leg, left arm, right leg, right arm]. Opposite arm leads.
   const {limbs,knees=[],elbows=[],torso,hips}=player.userData;
+  player.userData.hands?.forEach(h=>h.rotation.set(0,0,0));
   const phases=[0,Math.PI,Math.PI,0],blend=moving?T.MathUtils.clamp(weight,0,1):0,amplitude=(walk?.32:.60)*blend;
   limbs.forEach((limb,i)=>{limb.rotation.set(moving?Math.sin(step+phases[i])*amplitude:0,0,0);});
   knees.forEach((k,i)=>k.rotation.set(moving?(.12+Math.max(0,-Math.sin(step+i*Math.PI))**2*(walk?.55:.8))*blend:0,0,0));
@@ -631,13 +638,14 @@ export class Stadium {
   elbows.forEach(e=>e.rotation.x=-.18);head.rotation.y=Math.sin(time*.45+offset)*.035;
  }
  poseFielding(player,time,mode='ready',weight=1,height=1.2){
-  if(!player.userData.athlete)return;
+  if(mode==='crouch'){poseCatcher(this,player,time);return;}
+  if(!player.userData.hips||!player.userData.hands)return;
   const {limbs,knees,elbows,torso,hips,head}=player.userData;
-  const w=T.MathUtils.clamp(weight,0,1),low=mode==='ground'||mode==='crouch',bend=low?(mode==='crouch'?1.05:.95):.20;
+  const w=T.MathUtils.clamp(weight,0,1),low=mode==='ground'||mode==='crouch',bend=low?1.15:.20;
   for(const i of [0,2])limbs[i].rotation.x=T.MathUtils.lerp(limbs[i].rotation.x,-bend,w);
   knees.forEach(k=>k.rotation.x=T.MathUtils.lerp(k.rotation.x,bend*2,w));
-  limbs[0].position.x=-.105-(low?.045:.02)*w;limbs[2].position.x=.105+(low?.045:.02)*w;
-  torso.rotation.x=T.MathUtils.lerp(torso.rotation.x,low?.48:.10,w);torso.rotation.y*=1-w;hips.rotation.y*=1-w;
+  limbs[0].position.x=-.105-(low?.115:.02)*w;limbs[2].position.x=.105+(low?.115:.02)*w;
+  torso.rotation.x=T.MathUtils.lerp(torso.rotation.x,low?.65:.10,w);torso.rotation.y*=1-w;hips.rotation.y*=1-w;
   // Raise the glove before contact, then bring it toward the chest.
   const arm=mode==='catch'?T.MathUtils.clamp(-.8-(height-.8)*1.2,-2.65,-.55):low?-.20:-.46;
   for(const [j,i]of [1,3].entries()){
@@ -646,6 +654,12 @@ export class Stadium {
   }
   this.plantAthleteFeet(player);head.rotation.x=-torso.rotation.x*.65;
   torso.position.y+=Math.sin(time*1.7)*.003;
+  // Solve the actual wrist position; an arm angle alone can leave the glove
+  // edge-on or below the knees even when the body is correctly crouched.
+  const glove=handPoint(player,0),bare=handPoint(player,1),y=mode==='ground'?.18:mode==='catch'?height:.90;
+  const target=V(-.10,y,mode==='ground'?.48:.38);player.updateMatrixWorld(true);player.localToWorld(target);
+  reachHand(player,0,glove.lerp(target,w));
+  const other=player.localToWorld(V(mode==='catch'?.08:.17,y+(mode==='catch'?-.10:.10),mode==='ground'?.45:.30));reachHand(player,1,bare.lerp(other,w));presentGlove(player,{low:mode==='ground'?1:mode==='catch'?1-T.MathUtils.smoothstep(height,.65,1.05):0,weight:w});
  }
  runningPoint(move,t){
   let distance=move.distance*Math.max(0,Math.min(1,t));
@@ -930,7 +944,7 @@ export class Stadium {
   }
   this.fielders.forEach((f,i)=>{
    f.position.set(FIELDERS[i][0],0,FIELDERS[i][1]);f.rotation.set(0,Math.atan2(-f.position.x,-f.position.z),0);this.poseRunning(f,0,false);
-   posePrepared(this,f,time/1000,{intensity:anticipation(time,phase,pitch)*(i<4?1:.7),offset:i*1.37});
+   posePrepared(this,f,time/1000,{intensity:anticipation(time,phase,pitch)*(i<4?1:.7),offset:i*1.37,role:i>=4?'outfield':i<2?'corner':'infield'});
   });
   if(this.catcher){this.catcher.position.set(0,0,-2);this.catcher.rotation.set(0,0,0);this.poseRunning(this.catcher,0,false);this.poseFielding(this.catcher,time/1000,'crouch');}
   const soundingHit=this.hit;

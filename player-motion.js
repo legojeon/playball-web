@@ -12,6 +12,31 @@ export function reachHand(p,side,target){
  p.updateMatrixWorld(true);return handPoint(p,side);
 }
 const local=(p,v)=>{p.updateMatrixWorld(true);return p.localToWorld(V(...v));};
+// The glove's pocket is authored along +Z. Keep it open toward the ball,
+// independently of the forearm's bend, without moving the wrist anchor.
+export function presentGlove(p,{low=false,weight=1}={}){
+ const hand=p.userData.hands?.[0];if(!hand)return;
+ p.updateMatrixWorld(true);
+ const turn=new T.Quaternion().setFromAxisAngle(V(0,0,1),Number(low)*Math.PI);
+ const desired=p.getWorldQuaternion(new T.Quaternion()).multiply(turn);
+ const q=hand.parent.getWorldQuaternion(new T.Quaternion()).invert().multiply(desired);
+ hand.quaternion.slerp(q,weight);p.updateMatrixWorld(true);
+}
+export function poseCatcher(s,p,time){
+ if(!p.userData.hips||!p.userData.hands)return;
+ s.poseRunning(p,0,false);
+ const {hips,torso,head,limbs,knees}=p.userData,hipY=.43+.003*Math.sin(time*1.7),lower=Math.hypot(.41,.055);
+ hips.position.y=hipY;torso.position.y=hipY+.03;torso.rotation.x=.23;head.rotation.x=-.16;
+ for(const [j,i]of [0,2].entries()){
+  const z=.26,down=hipY-.06,d=Math.hypot(z,down);
+  limbs[i].position.x=(j?1:-1)*.23;
+  limbs[i].rotation.x=-Math.atan2(z,down)-Math.acos((.32**2+d*d-lower**2)/(2*.32*d));
+  knees[j].rotation.x=Math.PI-Math.acos((.32**2+lower**2-d*d)/(2*.32*lower))+Math.atan2(.055,.41);
+ }
+ reachHand(p,0,local(p,[-.04,.86,.43]));
+ // Bare hand stays protected behind the right thigh instead of hanging in front.
+ reachHand(p,1,local(p,[.23,.53,-.09]));presentGlove(p);
+}
 const mix=(a,b,u)=>a.map((v,i)=>T.MathUtils.lerp(v,b[i],u));
 // Fixed snapshots of distinct dugout activities; baked once for mobile rendering.
 export const BENCH_POSES=['lean','watch','chat','relax','clasp','applaud','hands-on-hips','cheer'];
@@ -99,7 +124,7 @@ export function poseTransfer(s,p,u,{incoming,outgoing,catchPoint,ground=false}){
  else if(u<=.77)hand=chest.clone().lerp(local(p,[.43,1.46,-.18]),load);
  else if(u<=1)hand=local(p,[.43,1.46,-.18]).lerp(local(p,[.18,1.54,.43]),snap);
  else hand=local(p,[.18,1.54,.43]).lerp(local(p,[-.28,.89,.39]),follow);
- const throwing=reachHand(p,1,hand);
+ const throwing=reachHand(p,1,hand);presentGlove(p,{low:(ground?1:1-ease(catchPoint.y-p.position.y,.65,1.05))*(1-gather)});
  return {glove:pocket,hand:throwing,ball:u<.36?pocket:throwing};
 }
 // Sampling must not leave a future pose in a paused or skipped frame.
@@ -127,27 +152,33 @@ export function anticipation(time,phase,pitch){
  if(phase==='windup'&&pitch)return .45+.55*ease((time-pitch.windupAt)/pitch.windup,.25,.95);
  return ['ready','stance'].includes(phase)?.45:.25;
 }
-export function posePrepared(s,p,time,{runner=false,intensity=.45,offset=0,look=0}={}){
+export function posePrepared(s,p,time,{runner=false,intensity=.45,offset=0,look=0,role='infield'}={}){
  const {limbs,knees,elbows,hips,torso,head}=p.userData;
  if(!hips||!torso||knees?.length!==2||!head)return;
  s.poseRunning(p,0,false);
- const breath=Math.sin(time*1.8+offset),load=Math.sin(time*1.05+offset),hipY=.715-(runner?.035:.045)*intensity+.007*breath;
+ const outfield=role==='outfield',corner=role==='corner';
+ const breath=Math.sin(time*1.8+offset),load=Math.sin(time*1.05+offset),hipY=(outfield?.75:.715)-(runner?.035:outfield?.03:corner?.065:.05)*intensity+.007*breath;
  hips.position.set(0,hipY,0);hips.rotation.set(0,0,0);torso.position.set(0,hipY+.03,0);
  const lower=Math.hypot(.41,.055),soleAngle=Math.atan2(.055,.41);
  for(const [j,i]of [0,2].entries()){
   const z=runner?.26+(j?-.04:.04):.28,down=hipY-.06,d=Math.hypot(z,down);
-  limbs[i].position.set((j?1:-1)*(runner?.18:.22),0,0);
+  limbs[i].position.set((j?1:-1)*(runner?.18:outfield?.19:corner?.245:.23),0,0);
   const thigh=-Math.atan2(z,down)-Math.acos(T.MathUtils.clamp((.32**2+d*d-lower**2)/(2*.32*d),-1,1));
   const knee=Math.PI-Math.acos(T.MathUtils.clamp((.32**2+lower**2-d*d)/(2*.32*lower),-1,1))+soleAngle;
   limbs[i].rotation.set(thigh,0,0);knees[j].rotation.set(knee,0,0);
  }
- torso.rotation.set((runner?.13:.14)+.12*intensity,T.MathUtils.clamp(look,-.7,.7)*.25,load*.012);
+ torso.rotation.set((runner?.13:outfield?.10:.18)+(outfield?.07:.12)*intensity,T.MathUtils.clamp(look,-.7,.7)*.25,load*.012);
  for(const [j,i]of [1,3].entries()){
   limbs[i].rotation.set(runner?(j?.12:-.16):-.32-.12*intensity,0,(j?-1:1)*(runner?.08:.12));
   elbows[j].rotation.set(runner?-.95+load*.035: -.58-.15*intensity,0,0);
  }
  head.rotation.set(-torso.rotation.x*.75,T.MathUtils.clamp(look-torso.rotation.y,-1.1,1.1),-torso.rotation.z*.6);
- const nodes=[hips,torso,head,...limbs,...knees,...elbows];
+ if(!runner){
+  const y=outfield?.91:corner?.62:.68,z=outfield?.34:.44;
+  reachHand(p,0,local(p,[-.12,y,z]));reachHand(p,1,local(p,[.15,y+.06,z-.035]));
+  presentGlove(p,{low:!outfield});
+ }
+ const nodes=[hips,torso,head,...limbs,...knees,...elbows,...(p.userData.hands||[])];
  p.userData.preparedPose??=nodes.map(node=>({node,position:new T.Vector3(),rotation:new T.Quaternion()}));
  for(const saved of p.userData.preparedPose){saved.position.copy(saved.node.position);saved.rotation.copy(saved.node.quaternion);}
 }
