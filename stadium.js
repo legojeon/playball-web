@@ -1,19 +1,19 @@
-import {handPoint,poseBench,poseTransfer,samplePose,walkingLegs,sprintPose,RUN_STRIDE,anticipation,posePrepared} from './player-motion.js?v=107';
-import {loadAthletes,attachAthlete,athleteLOD,bakeAthlete,mergeBench,lowerAthleteParts} from './athlete.js?v=107';
-import {makeBattingGlove,battingArmGeometry} from './first-person.js?v=107';
-import {parkTexture,groundUV,softShadowTexture,seatGeometry,spectatorGeometry,parkNoise,CROWD_COLORS,addParkDetails} from './stadium-art.js?v=107';
-import {teamTheme} from './teams.js?v=107';
-import {followAim} from './contact-window.js?v=107';
+import {handPoint,poseBench,poseTransfer,samplePose,walkingLegs,sprintPose,RUN_STRIDE,anticipation,posePrepared} from './player-motion.js?v=108';
+import {loadAthletes,attachAthlete,athleteLOD,bakeAthlete,mergeBench,lowerAthleteParts} from './athlete.js?v=108';
+import {makeBattingGlove,battingArmGeometry} from './first-person.js?v=108';
+import {parkTexture,groundUV,softShadowTexture,seatGeometry,spectatorGeometry,parkNoise,CROWD_COLORS,addParkDetails} from './stadium-art.js?v=108';
+import {teamTheme} from './teams.js?v=108';
+import {followAim} from './contact-window.js?v=108';
 import * as T from './vendor/three.module.min.js';
-import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=107';
-import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=107';
-import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=107';
-import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=107';
-import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=107';
-import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition,homeRunDefensePlans,homeRunDefensePosition} from './fielding.js?v=107';
-import {sampleTrajectory,groundSurface} from './trajectory.js?v=107';
-export {BASES} from './field.js?v=107';
-import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=107';
+import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=108';
+import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=108';
+import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=108';
+import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=108';
+import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=108';
+import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition,homeRunDefensePlans,homeRunDefensePosition} from './fielding.js?v=108';
+import {sampleTrajectory,groundSurface} from './trajectory.js?v=108';
+export {BASES} from './field.js?v=108';
+import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=108';
 const V=(x,y,z)=>new T.Vector3(x,y,z);
 const stand=n=>[BASES[n][0]+(n===2?1.8:n===1?.5:-.5),.04,BASES[n][2]-.25];
 const mat=(color,extra={})=>new T.MeshStandardMaterial({color,roughness:.9,...extra});
@@ -718,8 +718,9 @@ export class Stadium {
    if(!finished&&time>move.start+move.delay&&t<1&&move.distance>0){
     const ahead=this.runningPoint(move,Math.min(1,t+.003));move.player.rotation.y=Math.atan2(ahead.x-pos.x,ahead.z-pos.z);
     // Stride follows distance travelled, so jogs and longer routes stay natural.
-    const step=move.distance*t/(move.walk?1.35:RUN_STRIDE)*Math.PI*2;
-    this.poseRunning(move.player,step,true,move.walk,Math.min(T.MathUtils.smoothstep(t*move.distance,0,.8),T.MathUtils.smoothstep((1-t)*move.distance,0,.7)));
+    // A walk award still moves at jogging speed; reserve the walking gait for dugout returns.
+    const step=move.distance*t/RUN_STRIDE*Math.PI*2;
+    this.poseRunning(move.player,step,true,false,Math.min(T.MathUtils.smoothstep(t*move.distance,0,.8),T.MathUtils.smoothstep((1-t)*move.distance,0,.7)));
    }else if(!move.out&&!move.retire&&(t>=1?move.to:move.from)>0&&(t>=1?move.to:move.from)<4)this.poseBaseRunner(move.player,t>=1?move.to:move.from,time,phase,pitch);
    else this.poseRunning(move.player,0,false);
    if((move.out||move.retire)&&finished){this.retireRunner(move,end);move.player.visible=false;}

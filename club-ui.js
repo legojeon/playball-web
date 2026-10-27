@@ -1,4 +1,4 @@
-import {TEAMS,findTeam,teamLogo,battingAverage,teamTheme} from './teams.js?v=107';
+import {TEAMS,findTeam,teamLogo,battingAverage,teamTheme} from './teams.js?v=108';
 export function bindClubUI({read,onSelect,onPractice,onSkip,onLookDone,onComplete,onOpen,canSave=()=>true}){
  const $=id=>document.getElementById(id),dialog=$('team-dialog');let chosen=null,first=false;
  const choice=$('tutorial-choice'),card=$('tutorial-card');let themedId;

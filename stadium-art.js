@@ -1,7 +1,7 @@
 import * as T from './vendor/three.module.min.js';
 import {mergeGeometries} from './vendor/utils/BufferGeometryUtils.js';
-import {BASES,FIELD} from './field.js?v=107';
-import {bowlSections} from './stadium-layout.js?v=107';
+import {BASES,FIELD} from './field.js?v=108';
+import {bowlSections} from './stadium-layout.js?v=108';
 // Deterministic, locally generated surfaces: no network textures or runtime noise shaders.
 export function parkNoise(n){let x=(n+0x6d2b79f5)|0;x=Math.imul(x^(x>>>15),x|1);x^=x+Math.imul(x^(x>>>7),x|61);return ((x^(x>>>14))>>>0)/4294967296;}
 export function surfacePixels(kind,size=256){
