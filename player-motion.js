@@ -13,13 +13,72 @@ export function reachHand(p,side,target){
 }
 const local=(p,v)=>{p.updateMatrixWorld(true);return p.localToWorld(V(...v));};
 const mix=(a,b,u)=>a.map((v,i)=>T.MathUtils.lerp(v,b[i],u));
+// Fixed snapshots of distinct dugout activities; baked once for mobile rendering.
+export const BENCH_POSES=['lean','watch','chat','relax','clasp','applaud','hands-on-hips','cheer'];
 export function poseBench(s,p,index){
  s.poseRunning(p,0,false);const {limbs,knees,torso,hips,head}=p.userData;
- // Seat top .43m: pelvis just above it, horizontal thighs, soles on the floor.
- hips.position.y=.49;torso.position.y=.52;torso.rotation.x=.10+(index%3)*.035;
- for(const [j,i]of [0,2].entries()){limbs[i].rotation.set(-1.50,0,(j?1:-1)*.12);knees[j].rotation.set(1.50,0,0);}
- head.rotation.set(-.06,(index%3-1)*.16,0);
- for(const side of [0,1])reachHand(p,side,local(p,[side?.19:-.19,.53,.27+(index%2)*.03]));
+ const kind=((index%8)+8)%8,seated=kind<6;
+ p.userData.benchPose=BENCH_POSES[kind];
+ if(seated){
+  hips.position.y=.49;torso.position.y=.52;
+  const lean=[.30,.07,.16,-.06,.26,.12][kind],turn=[0,-.12,.40,-.18,.06,.10][kind];
+  torso.rotation.set(lean,turn,kind===3?-.06:0);head.rotation.set(-lean*.65,kind===2?.28:-turn*.5,0);
+  // Independently placed feet: splayed knees and one foot tucked back slightly.
+  for(const [j,i]of [0,2].entries()){
+   const z=.29+((kind+j)%3)*.045,down=.43,lower=Math.hypot(.41,.055),d=Math.hypot(z,down);
+   limbs[i].position.x=(j?1:-1)*(.15+(kind===0?.035:0));
+   limbs[i].rotation.set(-Math.atan2(z,down)-Math.acos((.32**2+d*d-lower**2)/(2*.32*d)),0,0);
+   knees[j].rotation.set(Math.PI-Math.acos((.32**2+lower**2-d*d)/(2*.32*lower))+Math.atan2(.055,.41),0,0);
+  }
+ }else{
+  torso.rotation.set(.06,kind===6?-.10:.14,0);head.rotation.set(-.05,-torso.rotation.y*.6,0);
+ }
+ const hands=[
+  [[-.18,.59,.34],[.18,.59,.34]], // forearms on thighs
+  [[-.18,.56,.23],[.18,.56,.25]], // sitting upright
+  [[-.18,.57,.29],[.26,.91,.27]], // talking with a teammate
+  [[-.30,.48,-.05],[.19,.55,.28]], // one hand braced on seat
+  [[-.04,.62,.39],[.04,.62,.39]], // hands clasped between knees
+  [[-.045,.99,.36],[.045,.99,.36]], // hands together to applaud
+  [[-.25,.91,.03],[.25,.91,.03]], // standing, hands on hips
+  [[-.30,1.64,.18],[.26,1.10,.26]], // one arm raised to cheer
+ ][kind];
+ for(const side of [0,1])reachHand(p,side,local(p,hands[side]));
+}
+
+// One full left/right sprint cycle spans this travelled distance. Short contact
+// phases alternate with flight; recovery folds the heel before driving the knee.
+export const RUN_STRIDE=2.6;
+const RUN_CONTACT=.24;
+const recovery=[
+ [.24,-.374,.06,-RUN_STRIDE,0], [.40,-.23,.43,2.0,.7],
+ [.65,.35,.32,.9,-1.0], [.84,.40,.15,-.5,-.9], [1,.25,.06,-RUN_STRIDE,0],
+];
+function runFoot(phase){
+ if(phase<=RUN_CONTACT)return {z:.25-RUN_STRIDE*phase,y:.06};
+ const i=recovery.findIndex(k=>k[0]>=phase),a=recovery[i-1],b=recovery[i],span=b[0]-a[0],u=(phase-a[0])/span;
+ const h00=2*u**3-3*u**2+1,h10=u**3-2*u**2+u,h01=-2*u**3+3*u**2,h11=u**3-u**2;
+ return {z:h00*a[1]+h10*span*a[3]+h01*b[1]+h11*span*b[3],y:h00*a[2]+h10*span*a[4]+h01*b[2]+h11*span*b[4]};
+}
+export function sprintPose(p,step,weight){
+ const {limbs,knees,elbows,hips,torso,head}=p.userData;
+ const cycle=((step/(Math.PI*2))%1+1)%1,half=cycle%.5;
+ const lift=half<RUN_CONTACT?.06*Math.sin(Math.PI*half/RUN_CONTACT)**2:.10*Math.sin(Math.PI*(half-RUN_CONTACT)/(.5-RUN_CONTACT))**2;
+ const hipY=.68+lift,lower=Math.hypot(.41,.055);
+ hips.position.y=T.MathUtils.lerp(.79,hipY,weight);torso.position.y=hips.position.y+.03;
+ // Keep the pelvis square while a foot is planted; shoulders provide counter-rotation.
+ hips.rotation.set(0,0,0);torso.rotation.set(.28*weight,Math.sin(step)*.13*weight,Math.sin(step)*.035*weight);
+ head.rotation.set(-.15*weight,-torso.rotation.y*.7,-torso.rotation.z*.5);
+ for(const [j,i]of [0,2].entries()){
+  const phase=(cycle+j*.5)%1,foot=runFoot(phase),down=hipY-foot.y,d=T.MathUtils.clamp(Math.hypot(foot.z,down),.025,.729);
+  const thigh=-Math.atan2(foot.z,down)-Math.acos(T.MathUtils.clamp((.32**2+d*d-lower**2)/(2*.32*d),-1,1));
+  const knee=Math.PI-Math.acos(T.MathUtils.clamp((.32**2+lower**2-d*d)/(2*.32*lower),-1,1))+Math.atan2(.055,.41);
+  limbs[i].rotation.set(thigh*weight,0,0);knees[j].rotation.set(knee*weight,0,0);
+  // Bent elbows swing opposite the leg, close to the ribs rather than sideways.
+  const pump=-Math.sin(step+j*Math.PI);
+  limbs[i+1].rotation.set((.10+.70*pump)*weight,0,(j?-1:1)*.06*weight);
+  elbows[j].rotation.set((-1.20+.22*pump)*weight,0,0);
+ }
 }
 // The same pose is sampled for contact, glove-to-hand transfer and release anchors.
 // u=0 receive; .36 both hands meet; .72 arm loaded; 1 release; 1.55 follow-through.

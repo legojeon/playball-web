@@ -1,19 +1,19 @@
-import {handPoint,poseBench,poseTransfer,samplePose,walkingLegs,anticipation,posePrepared} from './player-motion.js?v=106';
-import {loadAthletes,attachAthlete,athleteLOD,bakeAthlete,mergeBench,lowerAthleteParts} from './athlete.js?v=106';
-import {makeBattingGlove,battingArmGeometry} from './first-person.js?v=106';
-import {parkTexture,groundUV,softShadowTexture,seatGeometry,spectatorGeometry,parkNoise,CROWD_COLORS,addParkDetails} from './stadium-art.js?v=106';
-import {teamTheme} from './teams.js?v=106';
-import {followAim} from './contact-window.js?v=106';
+import {handPoint,poseBench,poseTransfer,samplePose,walkingLegs,sprintPose,RUN_STRIDE,anticipation,posePrepared} from './player-motion.js?v=107';
+import {loadAthletes,attachAthlete,athleteLOD,bakeAthlete,mergeBench,lowerAthleteParts} from './athlete.js?v=107';
+import {makeBattingGlove,battingArmGeometry} from './first-person.js?v=107';
+import {parkTexture,groundUV,softShadowTexture,seatGeometry,spectatorGeometry,parkNoise,CROWD_COLORS,addParkDetails} from './stadium-art.js?v=107';
+import {teamTheme} from './teams.js?v=107';
+import {followAim} from './contact-window.js?v=107';
 import * as T from './vendor/three.module.min.js';
-import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=106';
-import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=106';
-import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=106';
-import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=106';
-import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=106';
-import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition,homeRunDefensePlans,homeRunDefensePosition} from './fielding.js?v=106';
-import {sampleTrajectory,groundSurface} from './trajectory.js?v=106';
-export {BASES} from './field.js?v=106';
-import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=106';
+import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=107';
+import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=107';
+import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=107';
+import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=107';
+import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=107';
+import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition,homeRunDefensePlans,homeRunDefensePosition} from './fielding.js?v=107';
+import {sampleTrajectory,groundSurface} from './trajectory.js?v=107';
+export {BASES} from './field.js?v=107';
+import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=107';
 const V=(x,y,z)=>new T.Vector3(x,y,z);
 const stand=n=>[BASES[n][0]+(n===2?1.8:n===1?.5:-.5),.04,BASES[n][2]-.25];
 const mat=(color,extra={})=>new T.MeshStandardMaterial({color,roughness:.9,...extra});
@@ -222,9 +222,8 @@ export class Stadium {
    player.position.set(seated?-6+i*2.4:i===6?-7.5:7.5,0,seated?1.2:-.8);
    player.rotation.y=Math.PI+(seated?0:i===6?-.2:.2);
    this.poseRunning(player,0,false);
-   const {limbs,knees,elbows,head}=player.userData;
-   if(seated)poseBench(this,player,i);else for(const elbow of elbows)elbow.rotation.x=-.22;
-   head.rotation.y=(i%3-1)*.12;
+   const {knees}=player.userData;
+   poseBench(this,player,seated?(home?i:(i+2)%6):i);
    player.userData.shadow.position.y=.025-player.position.y;
    player.updateMatrixWorld(true);
    for(const knee of knees)footprints.push(knee.localToWorld(V(0,-.41,.055)));
@@ -615,6 +614,7 @@ export class Stadium {
    this.plantAthleteFeet(player);
    if(moving){torso.rotation.z=Math.sin(step)*(walk?.018:.028)*blend;player.userData.head.rotation.y=-torso.rotation.y*.7;player.userData.elbows.forEach((e,i)=>e.rotation.x+=Math.sin(step+i*Math.PI)*.10*blend);}
   }
+  if(moving&&!walk&&hips&&player.userData.head)sprintPose(player,step,blend);
   // Ease out of the loaded stance as the first stride gathers speed.
   if(moving&&blend<1)for(const saved of player.userData.preparedPose??[]){saved.node.position.lerpVectors(saved.position,saved.node.position,blend);saved.node.quaternion.slerp(saved.rotation,1-blend);}
  }
@@ -718,9 +718,8 @@ export class Stadium {
    if(!finished&&time>move.start+move.delay&&t<1&&move.distance>0){
     const ahead=this.runningPoint(move,Math.min(1,t+.003));move.player.rotation.y=Math.atan2(ahead.x-pos.x,ahead.z-pos.z);
     // Stride follows distance travelled, so jogs and longer routes stay natural.
-    const step=move.distance*t/(move.walk?3.6:4)*Math.PI*2;
+    const step=move.distance*t/(move.walk?1.35:RUN_STRIDE)*Math.PI*2;
     this.poseRunning(move.player,step,true,move.walk,Math.min(T.MathUtils.smoothstep(t*move.distance,0,.8),T.MathUtils.smoothstep((1-t)*move.distance,0,.7)));
-    move.player.position.y+=Math.abs(Math.sin(step))*.045;
    }else if(!move.out&&!move.retire&&(t>=1?move.to:move.from)>0&&(t>=1?move.to:move.from)<4)this.poseBaseRunner(move.player,t>=1?move.to:move.from,time,phase,pitch);
    else this.poseRunning(move.player,0,false);
    if((move.out||move.retire)&&finished){this.retireRunner(move,end);move.player.visible=false;}
@@ -771,7 +770,7 @@ export class Stadium {
   const progress=Math.min(1,fielderDistance(t-FIELD.reaction-(fielding.fielder>=4?.12:0))/Math.max(.01,distance));
   f.position.set(base[0]+(target.x-base[0])*progress,0,base[1]+(target.z-base[1])*progress);
   f.rotation.y=Math.atan2(target.x-base[0],target.z-base[1]);
-  if(progress>0&&progress<1)this.poseRunning(f,distance*progress/4*Math.PI*2,true,false,T.MathUtils.smoothstep(distance*progress,0,.7));
+  if(progress>0&&progress<1)this.poseRunning(f,distance*progress/RUN_STRIDE*Math.PI*2,true,false,T.MathUtils.smoothstep(distance*progress,0,.7));
   const gather=T.MathUtils.smoothstep(t,fielding.time-.32,fielding.time);
   if(gather>0)this.poseFielding(f,t,fielding.caught?'catch':'ground',gather,target.y);
   if(f.userData.hands?.length&&f.userData.knees?.length){if(!fielding.caught&&t<fielding.time){const yaw=f.rotation.y;f.position.lerp(V(target.x-Math.sin(yaw)*.35,0,target.z-Math.cos(yaw)*.35),gather);}this.drawPossession(h,t,f);return;}
@@ -845,7 +844,7 @@ export class Stadium {
    player.position.set(pos.x,0,pos.z);
    const runYaw=Math.atan2(plan.point.x-x,plan.point.z-z),lookYaw=Math.atan2(this.ball.position.x-pos.x,this.ball.position.z-pos.z),watch=T.MathUtils.smoothstep(FIELD.fielderSpeed-pos.speed,FIELD.fielderSpeed-1,FIELD.fielderSpeed);
    player.rotation.set(0,runYaw+Math.atan2(Math.sin(lookYaw-runYaw),Math.cos(lookYaw-runYaw))*watch,0);
-   this.poseRunning(player,pos.travel/4*Math.PI*2,pos.moving,false,Math.min(1,pos.speed/3));
+   this.poseRunning(player,pos.travel/RUN_STRIDE*Math.PI*2,pos.moving,false,Math.min(1,pos.speed/3));
    if(player.userData.head)player.userData.head.rotation.x=-T.MathUtils.clamp(Math.atan2(this.ball.position.y-1.6,Math.max(1,Math.hypot(this.ball.position.x-pos.x,this.ball.position.z-pos.z))),-.12,.55);
   }
  }
@@ -857,9 +856,8 @@ export class Stadium {
    const pos=defensePosition(a,f,t),target=a.next&&t>f.time+.25?a.next:a.point;
    player.position.set(pos.x,0,pos.z);
    player.rotation.y=Math.atan2(pos.moving?target.x-pos.x:this.ball.position.x-pos.x,pos.moving?target.z-pos.z:this.ball.position.z-pos.z);
-   this.poseRunning(player,pos.travel/4*Math.PI*2,pos.moving);
+   this.poseRunning(player,pos.travel/RUN_STRIDE*Math.PI*2,pos.moving);
    if(!pos.moving)this.poseFielding(player,t);
-   if(pos.moving)player.position.y+=Math.abs(Math.sin(pos.travel/4*Math.PI*2))*.035;
    if(a.fielder===8)this.pitcherFootShadows?.forEach(shadow=>shadow.visible=false);
   }
  }
@@ -877,7 +875,7 @@ export class Stadium {
    if(u<1)done=false;
    p.position.copy(position).lerp(V(x,i===8?.23:0,z),u);
    p.rotation.y=u<1?Math.atan2(x-position.x,z-position.z):Math.PI;
-   this.poseRunning(p,d*u/3*Math.PI*2,u<1&&d>.1,false,Math.min(T.MathUtils.smoothstep(d*u,0,.6),T.MathUtils.smoothstep(d*(1-u),0,.6)));
+   this.poseRunning(p,d*u/RUN_STRIDE*Math.PI*2,u<1&&d>.1,false,Math.min(T.MathUtils.smoothstep(d*u,0,.6),T.MathUtils.smoothstep(d*(1-u),0,.6)));
    if(i===8)this.pitcherFootShadows?.forEach(shadow=>shadow.visible=u===1);
   }
   if(done)this.defenseReturn=null;
