@@ -1,10 +1,13 @@
-import {skinnedGlove,gloveMaterial} from './glove.js?v=113';
+import {BODY} from './player-rig.js?v=114';
+import {alignFeet} from './player-motion.js?v=114';
+import {skinnedGlove,gloveMaterial} from './glove.js?v=114';
 import * as T from './vendor/three.module.min.js';
 import {GLTFLoader} from './vendor/loaders/GLTFLoader.js';
 import {mergeGeometries} from './vendor/utils/BufferGeometryUtils.js';
 // The authored bind pose uses the same named joints as the game's release rig.
-export const ATHLETE_JOINTS={torso:[0,.82,0],hips:[0,.79,0],head:[0,1.57,0],
- 'leg.L':[-.105,.79,0],'knee.L':[-.105,.47,0],'leg.R':[.105,.79,0],'knee.R':[.105,.47,0],
+export const ATHLETE_JOINTS={torso:[0,BODY.torso,0],hips:[0,BODY.hip,0],head:[0,1.57,0],
+ 'leg.L':[-.105,BODY.hip,0],'knee.L':[-.105,BODY.hip-BODY.thigh,0],'leg.R':[.105,BODY.hip,0],'knee.R':[.105,BODY.hip-BODY.thigh,0],
+ 'ankle.L':[-.105,BODY.ankle,0],'ankle.R':[.105,BODY.ankle,0],
  'arm.L':[-.22,1.27,0],'elbow.L':[-.22,.99,0],'hand.L':[-.22,.70,0],
  'arm.R':[.22,1.27,0],'elbow.R':[.22,.99,0],'hand.R':[.22,.70,0]};
 let loading;
@@ -24,9 +27,9 @@ export function loadAthletes(){
  return loading??=Promise.all(['athlete.glb','athlete-low.glb'].map(file=>new GLTFLoader().loadAsync(new URL('./models/'+file,import.meta.url).href).then(prepareAthlete))).then(([near,far])=>({near,far}));
 }
 function jointMap(player){
- const {torso,hips,head,limbs,knees,elbows,hands}=player.userData;
+ const {torso,hips,head,limbs,knees,ankles,elbows,hands}=player.userData;
  return {torso,hips,head,'leg.L':limbs[0],'leg.R':limbs[2],'arm.L':limbs[1],'arm.R':limbs[3],
- 'knee.L':knees[0],'knee.R':knees[1],'elbow.L':elbows[0],'elbow.R':elbows[1],'hand.L':hands[0],'hand.R':hands[1]};
+ 'knee.L':knees[0],'knee.R':knees[1],'ankle.L':ankles[0],'ankle.R':ankles[1],'elbow.L':elbows[0],'elbow.R':elbows[1],'hand.L':hands[0],'hand.R':hands[1]};
 }
 export function attachAthlete(player,assets,materials,home){
  if(player.userData.athlete)return;
@@ -59,7 +62,7 @@ export function athleteLOD(player,camera){
 }
 // Static bench poses share a mesh per material; skinning is baked only at load.
 export function bakeAthlete(player,detail='far'){
- const result=[];player.updateMatrixWorld(true);
+ const result=[];alignFeet(player);player.updateMatrixWorld(true);
  for(const mesh of player.userData.athlete[detail].children){
   mesh.skeleton.update();const geometry=mesh.geometry.clone(),position=geometry.attributes.position;
   const point=new T.Vector3();
@@ -87,7 +90,7 @@ export function lowerAthleteParts(assets){
   const g=part.geometry,position=g.attributes.position,index=g.index,kept=[];
   for(let i=0;i<(index?.count??position.count);i+=3){
    const ids=[0,1,2].map(j=>index?index.getX(i+j):i+j);
-   if(ids.every(n=>position.getY(n)<.84))kept.push(...ids);
+   if(ids.every(n=>position.getY(n)<BODY.hip+.05))kept.push(...ids);
   }
   if(!kept.length)continue;
   // Compact vertices without splitting the shared vertices needed for smooth normals.

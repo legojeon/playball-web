@@ -1,20 +1,21 @@
-import {gloveGeometry,gloveMaterial} from './glove.js?v=113';
-import {handPoint,glovePoint,reachGlove,presentGlove,poseCatcher,reachHand,poseBench,poseTransfer,samplePose,walkingLegs,sprintPose,RUN_STRIDE,anticipation,posePrepared} from './player-motion.js?v=113';
-import {loadAthletes,attachAthlete,athleteLOD,bakeAthlete,mergeBench,lowerAthleteParts} from './athlete.js?v=113';
-import {makeBattingGlove,battingArmGeometry} from './first-person.js?v=113';
-import {parkTexture,groundUV,softShadowTexture,seatGeometry,spectatorGeometry,parkNoise,CROWD_COLORS,addParkDetails} from './stadium-art.js?v=113';
-import {teamTheme} from './teams.js?v=113';
-import {followAim} from './contact-window.js?v=113';
+import {BODY} from './player-rig.js?v=114';
+import {gloveGeometry,gloveMaterial} from './glove.js?v=114';
+import {alignFeet,plantLeg,groundLegs,handPoint,glovePoint,reachGlove,presentGlove,poseCatcher,reachHand,poseBench,poseTransfer,samplePose,walkingLegs,sprintPose,RUN_STRIDE,anticipation,posePrepared} from './player-motion.js?v=114';
+import {loadAthletes,attachAthlete,athleteLOD,bakeAthlete,mergeBench,lowerAthleteParts} from './athlete.js?v=114';
+import {makeBattingGlove,battingArmGeometry} from './first-person.js?v=114';
+import {parkTexture,groundUV,softShadowTexture,seatGeometry,spectatorGeometry,parkNoise,CROWD_COLORS,addParkDetails} from './stadium-art.js?v=114';
+import {teamTheme} from './teams.js?v=114';
+import {followAim} from './contact-window.js?v=114';
 import * as T from './vendor/three.module.min.js';
-import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=113';
-import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=113';
-import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=113';
-import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=113';
-import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=113';
-import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition,homeRunDefensePlans,homeRunDefensePosition} from './fielding.js?v=113';
-import {sampleTrajectory,groundSurface} from './trajectory.js?v=113';
-export {BASES} from './field.js?v=113';
-import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=113';
+import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=114';
+import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=114';
+import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=114';
+import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=114';
+import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=114';
+import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition,homeRunDefensePlans,homeRunDefensePosition} from './fielding.js?v=114';
+import {sampleTrajectory,groundSurface} from './trajectory.js?v=114';
+export {BASES} from './field.js?v=114';
+import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=114';
 const V=(x,y,z)=>new T.Vector3(x,y,z);
 const stand=n=>[BASES[n][0]+(n===2?1.8:n===1?.5:-.5),.04,BASES[n][2]-.25];
 const mat=(color,extra={})=>new T.MeshStandardMaterial({color,roughness:.9,...extra});
@@ -227,7 +228,7 @@ export class Stadium {
    poseBench(this,player,seated?(home?i:(i+2)%6):i);
    player.userData.shadow.position.y=.025-player.position.y;
    player.updateMatrixWorld(true);
-   for(const knee of knees)footprints.push(knee.localToWorld(V(0,-.41,.055)));
+   for(const knee of knees)footprints.push(knee.localToWorld(V(0,-BODY.shin,BODY.soleZ)));
    if(player.userData.athlete)poses.push(bakeAthlete(player));else for(const item of parts)item.matrices.push(item.part.matrixWorld.clone());
   }
   const roster=poses.length?mergeBench(poses):new T.Group();roster.name=home?'home-bench-players':'away-bench-players';
@@ -251,33 +252,34 @@ export class Stadium {
  }
  makePlayer(runner,gloveType='field'){
   const m=this.materials,p=new T.Group();p.scale.setScalar(PLAYER_SCALE);const jersey=runner?m.runner:m.jersey,helmet=runner?(m.runnerHelmet||m.helmet):m.helmet;
-  const torso=new T.Bone();torso.position.y=.82;p.add(torso);
-  const hips=new T.Bone();hips.position.y=.79;p.add(hips);
+  const torso=new T.Bone();torso.position.y=BODY.torso;p.add(torso);
+  const hips=new T.Bone();hips.position.y=BODY.hip;p.add(hips);
   const shirt=this.mesh(new T.CylinderGeometry(.23,.19,.58,10),jersey,0,.24,0,torso);shirt.scale.z=.70;
   this.box(.39,.045,.25,helmet,0,-.02,0,torso);
   // The shirt front and shoulder width make the trunk's side-on rotation readable.
   for(let i=0;i<3;i++)this.mesh(new T.SphereGeometry(.016,6,5),helmet,0,.16+i*.1,.154,torso);
   this.box(.12,.045,.018,helmet,.1,.34,.16,torso);
   this.mesh(new T.CylinderGeometry(.075,.09,.14,8),m.skin,0,.56,0,torso);
-  const head=new T.Bone();head.position.y=.75;torso.add(head);
+  const head=new T.Bone();head.position.y=BODY.head-BODY.torso;torso.add(head);
   this.mesh(new T.SphereGeometry(.17,12,8),m.skin,0,0,0,head);
   this.mesh(new T.SphereGeometry(.183,12,8,0,Math.PI*2,0,Math.PI/2),helmet,0,.07,0,head);
   this.box(.27,.04,.19,helmet,0,.07,.16,head);
-  const limbs=[],elbows=[],knees=[],hands=[];
+  const limbs=[],elbows=[],knees=[],ankles=[],hands=[];
   for(const side of [-1,1]){
    const leg=new T.Bone();leg.position.set(side*.105,0,0);hips.add(leg);
-   this.mesh(new T.CylinderGeometry(.077,.065,.32,7),m.pants,0,-.16,0,leg);
-   const knee=new T.Bone();knee.position.y=-.32;leg.add(knee);
+   this.mesh(new T.CylinderGeometry(.077,.065,BODY.thigh,7),m.pants,0,-BODY.thigh/2,0,leg);
+   const knee=new T.Bone();knee.position.y=-BODY.thigh;leg.add(knee);
    this.mesh(new T.CylinderGeometry(.065,.055,.32,7),m.pants,0,-.16,0,knee);
-   this.box(.15,.10,.27,m.shoe,0,-.36,.055,knee);limbs.push(leg);knees.push(knee);
-   const arm=new T.Bone();arm.position.set(side*.22,.45,0);torso.add(arm);
+   const ankle=new T.Bone();ankle.position.y=BODY.ankle-(BODY.hip-BODY.thigh);knee.add(ankle);ankles.push(ankle);
+   this.box(.12,.10,.27,m.shoe,0,-.035,.055,ankle);limbs.push(leg);knees.push(knee);
+   const arm=new T.Bone();arm.position.set(side*.22,BODY.shoulder-BODY.torso,0);torso.add(arm);
    this.mesh(new T.CylinderGeometry(.075,.063,.28,7),jersey,0,-.14,0,arm);
    const elbow=new T.Bone();elbow.position.y=-.28;arm.add(elbow);
    this.mesh(new T.CylinderGeometry(.063,.048,.29,7),m.skin,0,-.145,0,elbow);
    const hand=new T.Bone();hand.position.y=-.29;elbow.add(hand);this.mesh(new T.SphereGeometry(.059,8,7),m.skin,0,0,0,hand);
    limbs.push(arm);elbows.push(elbow);hands.push(hand);
   }
-  p.userData={limbs,elbows,knees,hands,torso,hips,head,gloveType};
+  p.userData={limbs,elbows,knees,ankles,hands,torso,hips,head,gloveType};
   const shadow=this.mesh(new T.CircleGeometry(.35,16),this.shadowMat,0,.025,0,p);shadow.rotation.x=-Math.PI/2;shadow.scale.set(1,1.7,1);
   if(!runner)this.mesh(gloveGeometry(gloveType,true).clone(),gloveMaterial,0,0,0,hands[0]);
   p.userData.shadow=shadow;p.userData.home=runner;this.players?.push(p);
@@ -377,11 +379,9 @@ export class Stadium {
   this.playerAssets=null;const player=this.makePlayer(true);this.playerAssets=saved;
   this.players.splice(this.players.indexOf(player),1);attachAthlete(player,lower,this.materials,true);
   player.position.set(.86,0,-.80);player.rotation.y=-Math.PI/2;
-  const {limbs,knees}=player.userData;
-  limbs[0].rotation.z=-.40;limbs[2].rotation.z=.40;
-  for(const i of [0,2])limbs[i].rotation.x=-.22;
-  knees.forEach(k=>k.rotation.x=.44);
-  player.updateMatrixWorld(true);player.position.y+=.045-Math.min(...knees.map(k=>k.localToWorld(V(0,-.41,.055)).y));
+  player.userData.hips.position.y=.83;player.userData.torso.position.y=.86;
+  for(const side of [0,1])plantLeg(player,side,V((side?1:-1)*.40,.06,.08));
+  player.updateMatrixWorld(true);
   const parts=bakeAthlete(player,'near');
   // Keep the existing visibility container and its contact shadows.
   for(const child of [...this.batterBody.children])if(child.geometry?.type!=='CircleGeometry'){child.removeFromParent();child.geometry?.dispose();}
@@ -545,9 +545,9 @@ export class Stadium {
   const p=this.pitcher; p.userData.hands?.forEach(h=>h.rotation.set(0,0,0));
   const {limbs:l,elbows:e,knees:k,torso,hips,head}=p.userData;
   p.position.set(0,.23,18.44-v.travel);p.rotation.set(0,Math.PI,0);
-  hips.position.set(0,.79,0);torso.position.set(0,.82,0);l[0].position.x=-.105;l[2].position.x=.105;
-  hips.rotation.y=v.hip;torso.rotation.set(v.lean,v.chest,-.05*Math.sin(Math.min(1,t)*Math.PI));head.rotation.set(0,-v.chest*.85,0);
-  l[0].rotation.set(v.lift,0,-.10);k[0].rotation.x=v.knee;l[2].rotation.set(v.back,0,.12);k[1].rotation.x=.10+v.back*.45;
+  hips.position.set(0,BODY.hip,0);torso.position.set(0,BODY.torso,0);l[0].position.x=-.105;l[2].position.x=.105;
+  hips.rotation.set(0,v.hip,0);torso.rotation.set(v.lean,v.chest,-.05*Math.sin(Math.min(1,t)*Math.PI));head.rotation.set(0,-v.chest*.85,0);
+  l[0].rotation.set(v.lift,0,-.10);k[0].rotation.set(v.knee,0,0);l[2].rotation.set(v.back,0,.12);k[1].rotation.set(.10+v.back*.45,0,0);
   const direction=key=>new T.Quaternion().setFromUnitVectors(V(0,-1,0),V(...v[key]).normalize());
   const arm=(upper,elbow,key,fore)=>{
    upper.quaternion.copy(direction(key));elbow.quaternion.copy(upper.quaternion).invert().multiply(direction(fore));
@@ -560,9 +560,9 @@ export class Stadium {
 
   // Keep the supporting sole on the mound as the stride lowers the hips.
   p.updateMatrixWorld(true);
-  const soles=k.map(j=>j.localToWorld(V(0,-.41,.055)));
+  const soles=k.map(j=>j.localToWorld(V(0,-BODY.shin,BODY.soleZ)));
   const clearance=Math.min(...soles.map(f=>f.y-(Math.hypot(f.x,f.z-18.44)<2?.28:.035)));
-  p.position.y-=clearance;
+  p.position.y-=clearance;alignFeet(p);
   this.pitcherFootShadows?.forEach((shadow,i)=>{const f=soles[i],ground=Math.hypot(f.x,f.z-18.44)<2?.28:.035;shadow.position.set(f.x,ground+.008,f.z);shadow.material.opacity=.3*Math.max(0,1-(f.y-clearance-ground)/.5);});
 
  }
@@ -611,8 +611,8 @@ export class Stadium {
   limbs.forEach((limb,i)=>{limb.rotation.set(moving?Math.sin(step+phases[i])*amplitude:0,0,0);});
   knees.forEach((k,i)=>k.rotation.set(moving?(.12+Math.max(0,-Math.sin(step+i*Math.PI))**2*(walk?.55:.8))*blend:0,0,0));
   elbows.forEach(e=>e.rotation.set(moving?-(walk?.16:1.0)*blend:0,0,0));
-  if(hips){hips.position.set(0,.79,0);limbs[0].position.x=-.105;limbs[2].position.x=.105;}
-  if(torso)torso.position.set(0,.82,0);
+  if(hips){hips.position.set(0,BODY.hip,0);limbs[0].position.x=-.105;limbs[2].position.x=.105;}
+  if(torso)torso.position.set(0,BODY.torso,0);
   if(player.userData.head)player.userData.head.rotation.set(0,0,0);
   if(torso)torso.rotation.set(moving?(walk?.04:.12)*blend:0,moving?Math.sin(step)*.06*blend:0,0);
   if(hips)hips.rotation.set(0,moving?-Math.sin(step)*.04*blend:0,0);
@@ -625,12 +625,14 @@ export class Stadium {
   if(moving&&!walk&&hips&&player.userData.head)sprintPose(player,step,blend);
   // Ease out of the loaded stance as the first stride gathers speed.
   if(moving&&blend<1)for(const saved of player.userData.preparedPose??[]){saved.node.position.lerpVectors(saved.position,saved.node.position,blend);saved.node.quaternion.slerp(saved.rotation,1-blend);}
+  alignFeet(player);
  }
  plantAthleteFeet(player){
   const {limbs,knees,hips,torso}=player.userData;
   // Preserve the lowest sole while knee flexion changes the stride height.
-  const soles=[0,2].map((index,i)=>.79-.32*Math.cos(limbs[index].rotation.x)-.41*Math.cos(limbs[index].rotation.x+knees[i].rotation.x));
-  const shift=.06-Math.min(...soles);hips.position.set(0,.79+shift,0);torso.position.set(0,.82+shift,0);
+  player.updateMatrixWorld(true);
+  const soles=knees.map(k=>player.worldToLocal(k.localToWorld(V(0,-BODY.shin,BODY.soleZ))).y);
+  const shift=BODY.soleY-Math.min(...soles);hips.position.y+=shift;torso.position.y+=shift;alignFeet(player);
  }
  poseIdle(player,time,offset=0){
   if(!player.userData.athlete)return;
@@ -644,8 +646,11 @@ export class Stadium {
   const {limbs,knees,elbows,torso,hips,head}=player.userData;
   const w=T.MathUtils.clamp(weight,0,1),low=mode==='ground'||mode==='crouch',bend=low?1.15:.20;
   for(const i of [0,2])limbs[i].rotation.x=T.MathUtils.lerp(limbs[i].rotation.x,-bend,w);
-  knees.forEach(k=>k.rotation.x=T.MathUtils.lerp(k.rotation.x,bend*2,w));
-  limbs[0].position.x=-.105-(low?.115:.02)*w;limbs[2].position.x=.105+(low?.115:.02)*w;
+  knees.forEach(k=>k.quaternion.slerp(new T.Quaternion().setFromEuler(new T.Euler(bend*2,0,0)),w));
+  for(const [j,i]of [0,2].entries()){
+   limbs[i].position.x=(j?1:-1)*BODY.hipWidth;
+   limbs[i].rotation.z=T.MathUtils.lerp(limbs[i].rotation.z,(j?1:-1)*(low?.30:.08),w);
+  }
   torso.rotation.x=T.MathUtils.lerp(torso.rotation.x,low?.65:.10,w);torso.rotation.y*=1-w;hips.rotation.y*=1-w;
   // Raise the glove before contact, then bring it toward the chest.
   const arm=mode==='catch'?T.MathUtils.clamp(-.8-(height-.8)*1.2,-2.65,-.55):low?-.20:-.46;
@@ -654,6 +659,7 @@ export class Stadium {
    elbows[j].rotation.set(T.MathUtils.lerp(elbows[j].rotation.x,low?-.25:-.72,w),0,0);
   }
   this.plantAthleteFeet(player);head.rotation.x=-torso.rotation.x*.65;
+  if(low)groundLegs(player,w);
   torso.position.y+=Math.sin(time*1.7)*.003;
   // Solve the actual wrist position; an arm angle alone can leave the glove
   // edge-on or below the knees even when the body is correctly crouched.

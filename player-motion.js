@@ -1,3 +1,4 @@
+import {BODY} from './player-rig.js?v=114';
 import * as T from './vendor/three.module.min.js';
 const V=(x,y,z)=>new T.Vector3(x,y,z),ease=T.MathUtils.smoothstep;
 export const handPoint=(p,side)=>{p.updateMatrixWorld(true);return p.userData.hands[side].getWorldPosition(new T.Vector3());};
@@ -26,17 +27,47 @@ export function reachGlove(p,target,low=0){
  for(let i=0;i<5;i++){presentGlove(p,{low});wrist.add(target.clone().sub(glovePoint(p,low)));reachHand(p,0,wrist);}
  presentGlove(p,{low});return glovePoint(p,low);
 }
+// Target is the sole in player coordinates. The hip stays fixed; abduction
+// comes from joint rotation, and the knee bends toward the player's front.
+export function alignFeet(p){
+ if(!p.userData.ankles)return;
+ p.updateMatrixWorld(true);const upright=p.getWorldQuaternion(new T.Quaternion());
+ for(const [side,ankle]of p.userData.ankles.entries()){
+  const knee=p.userData.knees[side];
+  ankle.quaternion.copy(knee.getWorldQuaternion(new T.Quaternion())).invert().multiply(upright);
+  // Keep the same sole contact while allowing the ankle to flex independently.
+  ankle.position.copy(V(0,-BODY.shin,BODY.soleZ)).sub(V(0,BODY.soleY-BODY.ankle,BODY.soleZ).applyQuaternion(ankle.quaternion));
+ }
+ p.updateMatrixWorld(true);
+}
+export function plantLeg(p,side,target){
+ const {hips,limbs,knees}=p.userData,leg=limbs[side?2:0],knee=knees[side];
+ leg.position.set((side?1:-1)*BODY.hipWidth,0,0);p.updateMatrixWorld(true);
+ const end=hips.worldToLocal(p.localToWorld(target.clone())),root=leg.position.clone();
+ const delta=end.sub(root),lower=Math.hypot(BODY.shin,BODY.soleZ),d=T.MathUtils.clamp(delta.length(),.04,BODY.thigh+lower-.001),axis=delta.normalize();
+ const pole=V((side?1:-1)*.20,0,1),bend=pole.addScaledVector(axis,-pole.dot(axis)).normalize();
+ const along=(BODY.thigh**2-lower**2+d*d)/(2*d),height=Math.sqrt(Math.max(0,BODY.thigh**2-along**2));
+ const joint=root.clone().addScaledVector(axis,along).addScaledVector(bend,height),sole=root.clone().addScaledVector(axis,d);
+ leg.quaternion.setFromUnitVectors(V(0,-1,0),joint.clone().sub(root).normalize());
+ knee.quaternion.copy(leg.quaternion).invert().multiply(new T.Quaternion().setFromUnitVectors(V(0,-BODY.shin,BODY.soleZ).normalize(),sole.sub(joint).normalize()));
+ alignFeet(p);
+}
+export function groundLegs(p,weight=1){
+ const {hips,torso,limbs,knees}=p.userData;
+ hips.position.y=T.MathUtils.lerp(hips.position.y,.55,weight);torso.position.y=hips.position.y+.03;
+ for(const [side,i]of [0,2].entries()){
+  const thigh=limbs[i].quaternion.clone(),knee=knees[side].quaternion.clone();
+  plantLeg(p,side,V((side?1:-1)*.40,.06,.19));
+  limbs[i].quaternion.slerp(thigh,1-weight);knees[side].quaternion.slerp(knee,1-weight);
+ }
+ alignFeet(p);
+}
 export function poseCatcher(s,p,time){
  if(!p.userData.hips||!p.userData.hands)return;
  s.poseRunning(p,0,false);
- const {hips,torso,head,limbs,knees}=p.userData,hipY=.43+.003*Math.sin(time*1.7),lower=Math.hypot(.41,.055);
+ const {hips,torso,head}=p.userData,hipY=.43+.003*Math.sin(time*1.7);
  hips.position.y=hipY;torso.position.y=hipY+.03;torso.rotation.x=.23;head.rotation.x=-.16;
- for(const [j,i]of [0,2].entries()){
-  const z=.26,down=hipY-.06,d=Math.hypot(z,down);
-  limbs[i].position.x=(j?1:-1)*.23;
-  limbs[i].rotation.x=-Math.atan2(z,down)-Math.acos((.32**2+d*d-lower**2)/(2*.32*d));
-  knees[j].rotation.x=Math.PI-Math.acos((.32**2+lower**2-d*d)/(2*.32*lower))+Math.atan2(.055,.41);
- }
+ for(const side of [0,1])plantLeg(p,side,V((side?1:-1)*.29,.06,.23));
  reachHand(p,0,local(p,[-.04,.86,.43]));
  // Bare hand stays protected behind the right thigh instead of hanging in front.
  reachHand(p,1,local(p,[.23,.53,-.09]));presentGlove(p);
@@ -53,12 +84,7 @@ export function poseBench(s,p,index){
   const lean=[.30,.07,.16,-.06,.26,.12][kind],turn=[0,-.12,.40,-.18,.06,.10][kind];
   torso.rotation.set(lean,turn,kind===3?-.06:0);head.rotation.set(-lean*.65,kind===2?.28:-turn*.5,0);
   // Independently placed feet: splayed knees and one foot tucked back slightly.
-  for(const [j,i]of [0,2].entries()){
-   const z=.29+((kind+j)%3)*.045,down=.43,lower=Math.hypot(.41,.055),d=Math.hypot(z,down);
-   limbs[i].position.x=(j?1:-1)*(.15+(kind===0?.035:0));
-   limbs[i].rotation.set(-Math.atan2(z,down)-Math.acos((.32**2+d*d-lower**2)/(2*.32*d)),0,0);
-   knees[j].rotation.set(Math.PI-Math.acos((.32**2+lower**2-d*d)/(2*.32*lower))+Math.atan2(.055,.41),0,0);
-  }
+  for(const side of [0,1])plantLeg(p,side,V((side?1:-1)*(.21+(kind===0?.025:0)),.06,.31+((kind+side)%3)*.045));
  }else{
   torso.rotation.set(.06,kind===6?-.10:.14,0);head.rotation.set(-.05,-torso.rotation.y*.6,0);
  }
@@ -93,15 +119,15 @@ export function sprintPose(p,step,weight){
  const {limbs,knees,elbows,hips,torso,head}=p.userData;
  const cycle=((step/(Math.PI*2))%1+1)%1,half=cycle%.5;
  const lift=half<RUN_CONTACT?.06*Math.sin(Math.PI*half/RUN_CONTACT)**2:.10*Math.sin(Math.PI*(half-RUN_CONTACT)/(.5-RUN_CONTACT))**2;
- const hipY=.68+lift,lower=Math.hypot(.41,.055);
- hips.position.y=T.MathUtils.lerp(.79,hipY,weight);torso.position.y=hips.position.y+.03;
+ const hipY=.79+lift,lower=Math.hypot(BODY.shin,BODY.soleZ);
+ hips.position.y=T.MathUtils.lerp(BODY.hip,hipY,weight);torso.position.y=hips.position.y+.03;
  // Keep the pelvis square while a foot is planted; shoulders provide counter-rotation.
  hips.rotation.set(0,0,0);torso.rotation.set(.28*weight,Math.sin(step)*.13*weight,Math.sin(step)*.035*weight);
  head.rotation.set(-.15*weight,-torso.rotation.y*.7,-torso.rotation.z*.5);
  for(const [j,i]of [0,2].entries()){
-  const phase=(cycle+j*.5)%1,foot=runFoot(phase),down=hipY-foot.y,d=T.MathUtils.clamp(Math.hypot(foot.z,down),.025,.729);
-  const thigh=-Math.atan2(foot.z,down)-Math.acos(T.MathUtils.clamp((.32**2+d*d-lower**2)/(2*.32*d),-1,1));
-  const knee=Math.PI-Math.acos(T.MathUtils.clamp((.32**2+lower**2-d*d)/(2*.32*lower),-1,1))+Math.atan2(.055,.41);
+  const phase=(cycle+j*.5)%1,foot=runFoot(phase),down=hipY-foot.y,d=T.MathUtils.clamp(Math.hypot(foot.z,down),.025,BODY.thigh+BODY.shin-.001);
+  const thigh=-Math.atan2(foot.z,down)-Math.acos(T.MathUtils.clamp((BODY.thigh**2+d*d-lower**2)/(2*BODY.thigh*d),-1,1));
+  const knee=Math.PI-Math.acos(T.MathUtils.clamp((BODY.thigh**2+lower**2-d*d)/(2*BODY.thigh*lower),-1,1))+Math.atan2(BODY.soleZ,BODY.shin);
   limbs[i].rotation.set(thigh*weight,0,0);knees[j].rotation.set(knee*weight,0,0);
   // Bent elbows swing opposite the leg, close to the ribs rather than sideways.
   const pump=-Math.sin(step+j*Math.PI);
@@ -116,9 +142,10 @@ export function poseTransfer(s,p,u,{incoming,outgoing,catchPoint,ground=false}){
  const gather=ease(u,0,.36),load=ease(u,.36,.77),snap=ease(u,.77,1),follow=ease(u,1,1.55),turn=ease(u,0,.70),low=(ground?1:0)*(1-gather);
  p.rotation.set(0,incoming+Math.atan2(Math.sin(outgoing-incoming),Math.cos(outgoing-incoming))*turn,0);
  limbs[0].rotation.set(-1.15*low-.20*load+.12*snap,0,-.07);limbs[2].rotation.set(-1.15*low+.18*load+.30*follow,0,.07);
- knees.forEach(k=>k.rotation.set(2.30*low+.23*(1-low),0,0));limbs[0].position.x=-.105-.07*low;limbs[2].position.x=.105+.07*low;
+ knees.forEach(k=>k.rotation.set(2.30*low+.23*(1-low),0,0));limbs[0].position.x=-BODY.hipWidth;limbs[2].position.x=BODY.hipWidth;limbs[0].rotation.z=-.28*low;limbs[2].rotation.z=.28*low;
  torso.rotation.set(.78*low+.08*load+.28*follow,.40*load-.65*snap-.25*follow,-.05*snap);
  hips.rotation.set(0,.18*load-.40*snap,0);head.rotation.set(-torso.rotation.x*.65,-torso.rotation.y*.7,0);s.plantAthleteFeet(p);
+ if(low>0)groundLegs(p,low);
  // Hips lead the shoulder turn. The hands meet at the chest before separating.
  const chest=local(p,[0,1.07,.30]),glove=catchPoint.clone().lerp(chest,gather);
  if(u>.36)glove.copy(local(p,mix([0,1.07,.30],[-.19,1.04,.14],Math.max(load,follow))));
@@ -133,7 +160,7 @@ export function poseTransfer(s,p,u,{incoming,outgoing,catchPoint,ground=false}){
 }
 // Sampling must not leave a future pose in a paused or skipped frame.
 export function samplePose(p,fn){
- const nodes=[p,p.userData.hips,p.userData.torso,p.userData.head,...p.userData.limbs,...p.userData.knees,...p.userData.elbows,...p.userData.hands];
+ const nodes=[p,p.userData.hips,p.userData.torso,p.userData.head,...p.userData.limbs,...p.userData.knees,...(p.userData.ankles||[]),...p.userData.elbows,...p.userData.hands];
  const saved=nodes.map(n=>[n.position.clone(),n.rotation.clone()]);
  try{return fn();}finally{nodes.forEach((n,i)=>{n.position.copy(saved[i][0]);n.rotation.copy(saved[i][1]);});p.updateMatrixWorld(true);}
 }
@@ -142,9 +169,9 @@ export function samplePose(p,fn){
 export function walkingLegs(p,step,weight){
  for(const [j,i]of [0,2].entries()){
   const phase=((step+j*Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2),swing=phase>Math.PI,u=swing?(phase-Math.PI)/Math.PI:phase/Math.PI;
-  const z=swing?T.MathUtils.lerp(-.28,.28,ease(u,0,1)):.28-.56*u,y=.06+(swing?Math.sin(u*Math.PI)**2*.10:0),down=.72-y,d=Math.min(.729,Math.hypot(z,down));
-  const thigh=-Math.atan2(z,down)-Math.acos(T.MathUtils.clamp((.32**2+d*d-.41**2)/(2*.32*d),-1,1));
-  const knee=Math.PI-Math.acos(T.MathUtils.clamp((.32**2+.41**2-d*d)/(2*.32*.41),-1,1));
+  const z=swing?T.MathUtils.lerp(-.28,.28,ease(u,0,1)):.28-.56*u,y=.06+(swing?Math.sin(u*Math.PI)**2*.10:0),down=.83-y,d=Math.min(BODY.thigh+BODY.shin-.001,Math.hypot(z,down));
+  const thigh=-Math.atan2(z,down)-Math.acos(T.MathUtils.clamp((BODY.thigh**2+d*d-BODY.shin**2)/(2*BODY.thigh*d),-1,1));
+  const knee=Math.PI-Math.acos(T.MathUtils.clamp((BODY.thigh**2+BODY.shin**2-d*d)/(2*BODY.thigh*BODY.shin),-1,1));
   p.userData.limbs[i].rotation.x=thigh*weight;p.userData.knees[j].rotation.x=knee*weight;
  }
 }
@@ -161,15 +188,11 @@ export function posePrepared(s,p,time,{runner=false,intensity=.45,offset=0,look=
  if(!hips||!torso||knees?.length!==2||!head)return;
  s.poseRunning(p,0,false);
  const outfield=role==='outfield',corner=role==='corner';
- const breath=Math.sin(time*1.8+offset),load=Math.sin(time*1.05+offset),hipY=(outfield?.75:.715)-(runner?.035:outfield?.03:corner?.065:.05)*intensity+.007*breath;
+ const breath=Math.sin(time*1.8+offset),load=Math.sin(time*1.05+offset),hipY=(outfield?.86:.825)-(runner?.035:outfield?.03:corner?.065:.05)*intensity+.007*breath;
  hips.position.set(0,hipY,0);hips.rotation.set(0,0,0);torso.position.set(0,hipY+.03,0);
- const lower=Math.hypot(.41,.055),soleAngle=Math.atan2(.055,.41);
- for(const [j,i]of [0,2].entries()){
-  const z=runner?.26+(j?-.04:.04):.28,down=hipY-.06,d=Math.hypot(z,down);
-  limbs[i].position.set((j?1:-1)*(runner?.18:outfield?.19:corner?.245:.23),0,0);
-  const thigh=-Math.atan2(z,down)-Math.acos(T.MathUtils.clamp((.32**2+d*d-lower**2)/(2*.32*d),-1,1));
-  const knee=Math.PI-Math.acos(T.MathUtils.clamp((.32**2+lower**2-d*d)/(2*.32*lower),-1,1))+soleAngle;
-  limbs[i].rotation.set(thigh,0,0);knees[j].rotation.set(knee,0,0);
+ for(const side of [0,1]){
+  const width=runner?.23:outfield?.25:corner?.34:.31,z=runner?.14+(side?-.04:.04):.16;
+  plantLeg(p,side,V((side?1:-1)*width,.06,z));
  }
  torso.rotation.set((runner?.13:outfield?.10:.18)+(outfield?.07:.12)*intensity,T.MathUtils.clamp(look,-.7,.7)*.25,load*.012);
  for(const [j,i]of [1,3].entries()){
