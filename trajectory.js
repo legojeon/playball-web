@@ -1,4 +1,4 @@
-import {FIELD,BASES} from './field.js?v=112';
+import {FIELD,BASES} from './field.js?v=113';
 export const BALL={mass:.145,radius:.0366};
 // Match the visible dirt apron, grass diamond and warning track. Coefficients
 // are game-tuned: shallow skips retain speed, grass absorbs more than dirt.

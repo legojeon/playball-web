@@ -12,15 +12,19 @@ export function reachHand(p,side,target){
  p.updateMatrixWorld(true);return handPoint(p,side);
 }
 const local=(p,v)=>{p.updateMatrixWorld(true);return p.localToWorld(V(...v));};
-// The glove's pocket is authored along +Z. Keep it open toward the ball,
-// independently of the forearm's bend, without moving the wrist anchor.
+// Wrist offsets are local to the forearm. Never aim the glove at the camera,
+// player forward vector or world axes; the whole mitt follows the arm's rotation.
 export function presentGlove(p,{low=false,weight=1}={}){
  const hand=p.userData.hands?.[0];if(!hand)return;
- p.updateMatrixWorld(true);
- const turn=new T.Quaternion().setFromAxisAngle(V(0,0,1),Number(low)*Math.PI);
- const desired=p.getWorldQuaternion(new T.Quaternion()).multiply(turn);
- const q=hand.parent.getWorldQuaternion(new T.Quaternion()).invert().multiply(desired);
+ const bend=.22*(1-Number(low)),q=new T.Quaternion().setFromEuler(new T.Euler(bend,-.15,0));
  hand.quaternion.slerp(q,weight);p.updateMatrixWorld(true);
+}
+// Low balls meet the fingertip edge; raised catches use the pocket center.
+export function glovePoint(p,low=0){p.updateMatrixWorld(true);const edge=p.userData.gloveType==='first'?.29:p.userData.gloveType==='catcher'?.25:.245;return p.userData.hands[0].localToWorld(V(0,-.13-(edge-.13)*low,.052));}
+export function reachGlove(p,target,low=0){
+ const wrist=handPoint(p,0);
+ for(let i=0;i<5;i++){presentGlove(p,{low});wrist.add(target.clone().sub(glovePoint(p,low)));reachHand(p,0,wrist);}
+ presentGlove(p,{low});return glovePoint(p,low);
 }
 export function poseCatcher(s,p,time){
  if(!p.userData.hips||!p.userData.hands)return;
@@ -118,13 +122,13 @@ export function poseTransfer(s,p,u,{incoming,outgoing,catchPoint,ground=false}){
  // Hips lead the shoulder turn. The hands meet at the chest before separating.
  const chest=local(p,[0,1.07,.30]),glove=catchPoint.clone().lerp(chest,gather);
  if(u>.36)glove.copy(local(p,mix([0,1.07,.30],[-.19,1.04,.14],Math.max(load,follow))));
- const pocket=reachHand(p,0,glove);
+ const gloveLow=(ground?1:1-ease(catchPoint.y-p.position.y,.65,1.05))*(1-gather),pocket=reachGlove(p,glove,gloveLow);
  let hand;
  if(u<=.36){const offset=local(p,[.13*(1-gather),.12*(1-gather),0]).sub(local(p,[0,0,0]));hand=pocket.clone().add(offset);}
  else if(u<=.77)hand=chest.clone().lerp(local(p,[.43,1.46,-.18]),load);
  else if(u<=1)hand=local(p,[.43,1.46,-.18]).lerp(local(p,[.18,1.54,.43]),snap);
  else hand=local(p,[.18,1.54,.43]).lerp(local(p,[-.28,.89,.39]),follow);
- const throwing=reachHand(p,1,hand);presentGlove(p,{low:(ground?1:1-ease(catchPoint.y-p.position.y,.65,1.05))*(1-gather)});
+ const throwing=reachHand(p,1,hand);
  return {glove:pocket,hand:throwing,ball:u<.36?pocket:throwing};
 }
 // Sampling must not leave a future pose in a paused or skipped frame.

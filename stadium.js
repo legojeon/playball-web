@@ -1,19 +1,20 @@
-import {handPoint,presentGlove,poseCatcher,reachHand,poseBench,poseTransfer,samplePose,walkingLegs,sprintPose,RUN_STRIDE,anticipation,posePrepared} from './player-motion.js?v=112';
-import {loadAthletes,attachAthlete,athleteLOD,bakeAthlete,mergeBench,lowerAthleteParts} from './athlete.js?v=112';
-import {makeBattingGlove,battingArmGeometry} from './first-person.js?v=112';
-import {parkTexture,groundUV,softShadowTexture,seatGeometry,spectatorGeometry,parkNoise,CROWD_COLORS,addParkDetails} from './stadium-art.js?v=112';
-import {teamTheme} from './teams.js?v=112';
-import {followAim} from './contact-window.js?v=112';
+import {gloveGeometry,gloveMaterial} from './glove.js?v=113';
+import {handPoint,glovePoint,reachGlove,presentGlove,poseCatcher,reachHand,poseBench,poseTransfer,samplePose,walkingLegs,sprintPose,RUN_STRIDE,anticipation,posePrepared} from './player-motion.js?v=113';
+import {loadAthletes,attachAthlete,athleteLOD,bakeAthlete,mergeBench,lowerAthleteParts} from './athlete.js?v=113';
+import {makeBattingGlove,battingArmGeometry} from './first-person.js?v=113';
+import {parkTexture,groundUV,softShadowTexture,seatGeometry,spectatorGeometry,parkNoise,CROWD_COLORS,addParkDetails} from './stadium-art.js?v=113';
+import {teamTheme} from './teams.js?v=113';
+import {followAim} from './contact-window.js?v=113';
 import * as T from './vendor/three.module.min.js';
-import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=112';
-import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=112';
-import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=112';
-import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=112';
-import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=112';
-import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition,homeRunDefensePlans,homeRunDefensePosition} from './fielding.js?v=112';
-import {sampleTrajectory,groundSurface} from './trajectory.js?v=112';
-export {BASES} from './field.js?v=112';
-import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=112';
+import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=113';
+import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=113';
+import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=113';
+import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=113';
+import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=113';
+import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition,homeRunDefensePlans,homeRunDefensePosition} from './fielding.js?v=113';
+import {sampleTrajectory,groundSurface} from './trajectory.js?v=113';
+export {BASES} from './field.js?v=113';
+import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=113';
 const V=(x,y,z)=>new T.Vector3(x,y,z);
 const stand=n=>[BASES[n][0]+(n===2?1.8:n===1?.5:-.5),.04,BASES[n][2]-.25];
 const mat=(color,extra={})=>new T.MeshStandardMaterial({color,roughness:.9,...extra});
@@ -40,8 +41,8 @@ export class Stadium {
   this.materials.runnerHelmet=this.materials.helmet.clone();
   this.makeField();this.makeStadium();this.makeBackStands();addParkDetails(this);this.pitcher=this.makePlayer(false);this.pitcher.position.set(0,.23,18.44);this.pitcher.rotation.y=Math.PI;this.scene.add(this.pitcher);
   this.pitcherFootShadows=[0,1].map(()=>{const m=this.mesh(new T.CircleGeometry(.18,18),this.shadowMat.clone());m.rotation.x=-Math.PI/2;return m;});
-  this.fielders=[];for(const [x,z] of FIELDERS){const p=this.makePlayer(false);p.position.set(x,0,z);p.rotation.y=Math.PI;this.scene.add(p);this.fielders.push(p);}
-  this.catcher=this.makePlayer(false);this.catcher.position.set(0,0,-2);this.scene.add(this.catcher);
+  this.fielders=[];for(const [x,z] of FIELDERS){const p=this.makePlayer(false,this.fielders.length===0?'first':'field');p.position.set(x,0,z);p.rotation.y=Math.PI;this.scene.add(p);this.fielders.push(p);}
+  this.catcher=this.makePlayer(false,'catcher');this.catcher.position.set(0,0,-2);this.scene.add(this.catcher);
   this.runners=Array.from({length:4},()=>{const p=this.makePlayer(true);p.visible=false;this.scene.add(p);return p;});
   const ballMat=mat('#fffbe7',{roughness:.75,transparent:true});this.ball=new T.Group();this.ball.add(new T.Mesh(new T.SphereGeometry(DISPLAY_BALL_RADIUS,16,12),ballMat));
   for(const s of [-1,1]){const curve=new T.EllipseCurve(0,0,.074,.076,-1.5,1.5,false);const pts=curve.getPoints(25).map(p=>V(s*(p.x-.029)*.446,p.y*.446,.044*.446));this.ball.add(new T.Line(new T.BufferGeometry().setFromPoints(pts),new T.LineBasicMaterial({color:'#b14c40',transparent:true})));}
@@ -248,7 +249,7 @@ export class Stadium {
   const texture=this.homeDugoutSign?.material.map,canvas=texture?.image;
   if(canvas){const c=canvas.getContext('2d');c.fillStyle=theme.primary;c.fillRect(0,0,canvas.width,canvas.height);c.fillStyle=theme.onPrimary;c.font='bold 80px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText(team?.name||'HOME TEAM',canvas.width/2,canvas.height/2,canvas.width-50);texture.needsUpdate=true;}
  }
- makePlayer(runner){
+ makePlayer(runner,gloveType='field'){
   const m=this.materials,p=new T.Group();p.scale.setScalar(PLAYER_SCALE);const jersey=runner?m.runner:m.jersey,helmet=runner?(m.runnerHelmet||m.helmet):m.helmet;
   const torso=new T.Bone();torso.position.y=.82;p.add(torso);
   const hips=new T.Bone();hips.position.y=.79;p.add(hips);
@@ -276,9 +277,9 @@ export class Stadium {
    const hand=new T.Bone();hand.position.y=-.29;elbow.add(hand);this.mesh(new T.SphereGeometry(.059,8,7),m.skin,0,0,0,hand);
    limbs.push(arm);elbows.push(elbow);hands.push(hand);
   }
-  p.userData={limbs,elbows,knees,hands,torso,hips,head};
+  p.userData={limbs,elbows,knees,hands,torso,hips,head,gloveType};
   const shadow=this.mesh(new T.CircleGeometry(.35,16),this.shadowMat,0,.025,0,p);shadow.rotation.x=-Math.PI/2;shadow.scale.set(1,1.7,1);
-  if(!runner)this.mesh(new T.SphereGeometry(.13,8,7),mat('#8b6248'),0,0,.035,hands[0]);
+  if(!runner)this.mesh(gloveGeometry(gloveType,true).clone(),gloveMaterial,0,0,0,hands[0]);
   p.userData.shadow=shadow;p.userData.home=runner;this.players?.push(p);
   if(this.playerAssets)attachAthlete(p,this.playerAssets,this.materials,runner);
   return p;
@@ -554,7 +555,7 @@ export class Stadium {
   arm(l[3],e[1],'arm','fore');arm(l[1],e[0],'glove','gf');
   // Set position: glove covers the ball hand, then separates into the delivery.
   const joined=1-T.MathUtils.smoothstep(t,.30,.62)+T.MathUtils.smoothstep(t,1.85,2.35);
-  if(joined>0){const qa=l[1].quaternion.clone(),qe=e[0].quaternion.clone();reachHand(p,0,handPoint(p,1));l[1].quaternion.slerp(qa,1-joined);e[0].quaternion.slerp(qe,1-joined);}
+  if(joined>0){const qa=l[1].quaternion.clone(),qe=e[0].quaternion.clone();reachGlove(p,handPoint(p,1));l[1].quaternion.slerp(qa,1-joined);e[0].quaternion.slerp(qe,1-joined);}
   presentGlove(p);
 
   // Keep the supporting sole on the mound as the stride lowers the hips.
@@ -656,9 +657,10 @@ export class Stadium {
   torso.position.y+=Math.sin(time*1.7)*.003;
   // Solve the actual wrist position; an arm angle alone can leave the glove
   // edge-on or below the knees even when the body is correctly crouched.
-  const glove=handPoint(player,0),bare=handPoint(player,1),y=mode==='ground'?.18:mode==='catch'?height:.90;
+  const lowGlove=mode==='ground'?1:mode==='catch'?1-T.MathUtils.smoothstep(height,.65,1.05):0;
+  const glove=glovePoint(player,lowGlove),bare=handPoint(player,1),y=mode==='ground'?.06:mode==='catch'?height:.90;
   const target=V(-.10,y,mode==='ground'?.48:.38);player.updateMatrixWorld(true);player.localToWorld(target);
-  reachHand(player,0,glove.lerp(target,w));
+  reachGlove(player,glove.lerp(target,w),lowGlove);
   const other=player.localToWorld(V(mode==='catch'?.08:.17,y+(mode==='catch'?-.10:.10),mode==='ground'?.45:.30));reachHand(player,1,bare.lerp(other,w));presentGlove(player,{low:mode==='ground'?1:mode==='catch'?1-T.MathUtils.smoothstep(height,.65,1.05):0,weight:w});
  }
  runningPoint(move,t){
@@ -849,7 +851,7 @@ export class Stadium {
     this.ball.userData.flightWeight=Math.min(T.MathUtils.smoothstep(t,leg.release,leg.release+.12),1-T.MathUtils.smoothstep(t,leg.arrival-.10,leg.arrival));this.ball.position.copy(a.from).lerp(a.to,v);this.ball.position.y+=Math.sin(v*Math.PI)*1.5;return;
    }
   }
-  const receiver=this.defensivePlayer(plan.legs.at(-1).receiver);this.ball.position.copy(handPoint(receiver,0));this.ball.userData.held=true;
+  const receiver=this.defensivePlayer(plan.legs.at(-1).receiver);this.ball.position.copy(glovePoint(receiver));this.ball.userData.held=true;
  }
  defensivePlayer(i){return i===8?this.pitcher:i===7?this.catcher:this.fielders[i];}
  drawHomeRunDefense(hit,t){

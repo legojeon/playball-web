@@ -1,3 +1,4 @@
+import {skinnedGlove,gloveMaterial} from './glove.js?v=113';
 import * as T from './vendor/three.module.min.js';
 import {GLTFLoader} from './vendor/loaders/GLTFLoader.js';
 import {mergeGeometries} from './vendor/utils/BufferGeometryUtils.js';
@@ -36,8 +37,9 @@ export function attachAthlete(player,assets,materials,home){
   const group=new T.Group();group.name='athlete-skin';
   for(const part of parts){
    if(home&&part.name==='glove')continue;
-   const material=part.name==='jersey'?materials[home?'runner':'jersey']:part.name==='trim'?(home?materials.runnerHelmet||materials.helmet:materials.helmet):part.material;
-   const mesh=new T.SkinnedMesh(part.geometry,material);
+   const material=part.name==='glove'?gloveMaterial:part.name==='jersey'?materials[home?'runner':'jersey']:part.name==='trim'?(home?materials.runnerHelmet||materials.helmet:materials.helmet):part.material;
+   const geometry=part.name==='glove'?skinnedGlove(player.userData.gloveType||'field',parts===assets.far,part.joints.indexOf('hand.L')):part.geometry;
+   const mesh=new T.SkinnedMesh(geometry,material);
    const key=part.joints.join('|');
    if(!skeletons.has(key)){
     const inverses=part.joints.map(name=>new T.Matrix4().makeTranslation(...ATHLETE_JOINTS[name]).invert());

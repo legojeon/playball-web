@@ -1,5 +1,5 @@
-import {firstOutOfPlay,inPlayTerritory} from './stadium-layout.js?v=112';
-import {BASES,FIELDERS,FIELD,runnerArrival,fielderTravel,fielderDistance} from './field.js?v=112';
+import {firstOutOfPlay,inPlayTerritory} from './stadium-layout.js?v=113';
+import {BASES,FIELDERS,FIELD,runnerArrival,fielderTravel,fielderDistance} from './field.js?v=113';
 function reach(i,p,air){
  const [x,z]=FIELDERS[i],reaction=FIELD.reaction+(i>=4?.12:0),radius=air?1.1:.75;
  return reaction+fielderTravel(Math.max(0,Math.hypot(p.x-x,p.z-z)-radius));
