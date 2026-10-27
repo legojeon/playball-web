@@ -1,19 +1,19 @@
-import {handPoint,poseBench,poseTransfer,samplePose,walkingLegs,sprintPose,RUN_STRIDE,anticipation,posePrepared} from './player-motion.js?v=109';
-import {loadAthletes,attachAthlete,athleteLOD,bakeAthlete,mergeBench,lowerAthleteParts} from './athlete.js?v=109';
-import {makeBattingGlove,battingArmGeometry} from './first-person.js?v=109';
-import {parkTexture,groundUV,softShadowTexture,seatGeometry,spectatorGeometry,parkNoise,CROWD_COLORS,addParkDetails} from './stadium-art.js?v=109';
-import {teamTheme} from './teams.js?v=109';
-import {followAim} from './contact-window.js?v=109';
+import {handPoint,poseBench,poseTransfer,samplePose,walkingLegs,sprintPose,RUN_STRIDE,anticipation,posePrepared} from './player-motion.js?v=110';
+import {loadAthletes,attachAthlete,athleteLOD,bakeAthlete,mergeBench,lowerAthleteParts} from './athlete.js?v=110';
+import {makeBattingGlove,battingArmGeometry} from './first-person.js?v=110';
+import {parkTexture,groundUV,softShadowTexture,seatGeometry,spectatorGeometry,parkNoise,CROWD_COLORS,addParkDetails} from './stadium-art.js?v=110';
+import {teamTheme} from './teams.js?v=110';
+import {followAim} from './contact-window.js?v=110';
 import * as T from './vendor/three.module.min.js';
-import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=109';
-import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=109';
-import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=109';
-import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=109';
-import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=109';
-import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition,homeRunDefensePlans,homeRunDefensePosition} from './fielding.js?v=109';
-import {sampleTrajectory,groundSurface} from './trajectory.js?v=109';
-export {BASES} from './field.js?v=109';
-import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=109';
+import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=110';
+import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=110';
+import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=110';
+import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=110';
+import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=110';
+import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition,homeRunDefensePlans,homeRunDefensePosition} from './fielding.js?v=110';
+import {sampleTrajectory,groundSurface} from './trajectory.js?v=110';
+export {BASES} from './field.js?v=110';
+import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=110';
 const V=(x,y,z)=>new T.Vector3(x,y,z);
 const stand=n=>[BASES[n][0]+(n===2?1.8:n===1?.5:-.5),.04,BASES[n][2]-.25];
 const mat=(color,extra={})=>new T.MeshStandardMaterial({color,roughness:.9,...extra});
@@ -881,10 +881,11 @@ export class Stadium {
   }
   if(done)this.defenseReturn=null;
  }
- completePlay(time){
+ completePlay(time,holdArrival=false){
+  const run=this.followRun,arrival=holdArrival&&run&&!run.out&&!run.departure?{...run,start:time-run.delay-run.travel}:null;
   // State was already saved at resolution; skipping only settles presentation.
   for(const move of this.moves){if((move.out||move.retire)&&!move.departed){const at=move.stopAt??time;this.retireRunner(move,at);this.departures.at(-1).start=time;}}
-  this.hit=null;this.setBases(this.staticBases);this.followRun=null;this.manualLook=null;
+  this.hit=null;this.setBases(this.staticBases);this.followRun=arrival;if(!arrival)this.manualLook=null;
   if(this.defenseReturn)this.defenseReturn.time=time;
  }
  showPitchMark(p,time,review=null){
