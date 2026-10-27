@@ -14,15 +14,17 @@ export function swingFeedbackOpacity(elapsed){
  return elapsed<1650?1:1-(elapsed-1650)/350;
 }
 
-// Seconds after contact. Safe advances wait for arrival; outs/fouls retain
+// Seconds after contact. Home runs reveal at fence crossing; other safe advances
+// wait for arrival. Outs/fouls retain
 // their decisive catch/throw event instead of waiting for a dugout return.
 export function battedResultDelay(result,runningTime=0){
  const b=result.batted;
+ if(result.bases===4)return b?.animationTime??0;
  if(result.bases||result.hbp||result.label==='BASE ON BALLS')return Math.max(0,runningTime)/1000;
  if(!b)return 0;
  if(b.caught)return b.fielding?.time??b.animationTime??0;
  if(result.out)return b.returnAt??b.animationTime??0;
  if(result.foul)return Math.min(b.firstBounce?.t??Infinity,b.animationTime??0);
- if(result.bases===4||b.groundRuleDouble)return b.animationTime??0;
+ if(b.groundRuleDouble)return b.animationTime??0;
  return b.firstBounce?.t??b.flight??b.fielding?.time??b.animationTime??0;
 }

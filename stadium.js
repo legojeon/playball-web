@@ -1,19 +1,19 @@
-import {handPoint,poseBench,poseTransfer,samplePose,walkingLegs,sprintPose,RUN_STRIDE,anticipation,posePrepared} from './player-motion.js?v=110';
-import {loadAthletes,attachAthlete,athleteLOD,bakeAthlete,mergeBench,lowerAthleteParts} from './athlete.js?v=110';
-import {makeBattingGlove,battingArmGeometry} from './first-person.js?v=110';
-import {parkTexture,groundUV,softShadowTexture,seatGeometry,spectatorGeometry,parkNoise,CROWD_COLORS,addParkDetails} from './stadium-art.js?v=110';
-import {teamTheme} from './teams.js?v=110';
-import {followAim} from './contact-window.js?v=110';
+import {handPoint,poseBench,poseTransfer,samplePose,walkingLegs,sprintPose,RUN_STRIDE,anticipation,posePrepared} from './player-motion.js?v=111';
+import {loadAthletes,attachAthlete,athleteLOD,bakeAthlete,mergeBench,lowerAthleteParts} from './athlete.js?v=111';
+import {makeBattingGlove,battingArmGeometry} from './first-person.js?v=111';
+import {parkTexture,groundUV,softShadowTexture,seatGeometry,spectatorGeometry,parkNoise,CROWD_COLORS,addParkDetails} from './stadium-art.js?v=111';
+import {teamTheme} from './teams.js?v=111';
+import {followAim} from './contact-window.js?v=111';
 import * as T from './vendor/three.module.min.js';
-import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=110';
-import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=110';
-import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=110';
-import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=110';
-import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=110';
-import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition,homeRunDefensePlans,homeRunDefensePosition} from './fielding.js?v=110';
-import {sampleTrajectory,groundSurface} from './trajectory.js?v=110';
-export {BASES} from './field.js?v=110';
-import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=110';
+import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=111';
+import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=111';
+import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=111';
+import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=111';
+import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=111';
+import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition,homeRunDefensePlans,homeRunDefensePosition} from './fielding.js?v=111';
+import {sampleTrajectory,groundSurface} from './trajectory.js?v=111';
+export {BASES} from './field.js?v=111';
+import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=111';
 const V=(x,y,z)=>new T.Vector3(x,y,z);
 const stand=n=>[BASES[n][0]+(n===2?1.8:n===1?.5:-.5),.04,BASES[n][2]-.25];
 const mat=(color,extra={})=>new T.MeshStandardMaterial({color,roughness:.9,...extra});
@@ -875,8 +875,9 @@ export class Stadium {
    const duration=i===8?1500:Math.max(800,d/5.5*1000),u=T.MathUtils.clamp((time-back.time)/duration,0,1);
    if(u<1)done=false;
    p.position.copy(position).lerp(V(x,i===8?.23:0,z),u);
-   p.rotation.y=u<1?Math.atan2(x-position.x,z-position.z):Math.PI;
+   p.rotation.y=u<1?Math.atan2(x-position.x,z-position.z):(i===7?0:Math.PI);
    this.poseRunning(p,d*u/RUN_STRIDE*Math.PI*2,u<1&&d>.1,false,Math.min(T.MathUtils.smoothstep(d*u,0,.6),T.MathUtils.smoothstep(d*(1-u),0,.6)));
+   if(i===7&&u===1)this.poseFielding(p,time/1000,'crouch');
    if(i===8)this.pitcherFootShadows?.forEach(shadow=>shadow.visible=u===1);
   }
   if(done)this.defenseReturn=null;
@@ -931,7 +932,7 @@ export class Stadium {
    f.position.set(FIELDERS[i][0],0,FIELDERS[i][1]);f.rotation.set(0,Math.atan2(-f.position.x,-f.position.z),0);this.poseRunning(f,0,false);
    posePrepared(this,f,time/1000,{intensity:anticipation(time,phase,pitch)*(i<4?1:.7),offset:i*1.37});
   });
-  if(this.catcher){this.catcher.position.set(0,0,-2);this.poseRunning(this.catcher,0,false);this.poseFielding(this.catcher,time/1000,'crouch');}
+  if(this.catcher){this.catcher.position.set(0,0,-2);this.catcher.rotation.set(0,0,0);this.poseRunning(this.catcher,0,false);this.poseFielding(this.catcher,time/1000,'crouch');}
   const soundingHit=this.hit;
   if(this.hit)this.drawHit(time);
   if(this.hit)this.rememberDefense(time);else this.returnDefense(time,phase);

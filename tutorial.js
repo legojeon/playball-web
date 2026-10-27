@@ -1,5 +1,5 @@
-import {traceBall,sampleTrajectory} from './trajectory.js?v=110';
-import {throwPlan} from './fielding.js?v=110';
+import {traceBall,sampleTrajectory} from './trajectory.js?v=111';
+import {throwPlan} from './fielding.js?v=111';
 // Isolated practice contact: always a fair single, never used by regular batting.
 export function tutorialHit(){
  const velocity=[-12,7,25],trace=traceBall({x:0,y:1.02,z:.35},velocity,0);

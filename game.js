@@ -1,17 +1,17 @@
-import {cleanClub,selectTeam,findTeam,battingAverage,recordAppearance} from './teams.js?v=110';
-import {bindClubUI} from './club-ui.js?v=110';
-import {tutorialHit,tutorialPitch} from './tutorial.js?v=110';
-import {bindMusicMenu} from './music-menu.js?v=110';
-import {readProgress,makeProgress} from './progress.js?v=110';
-import {Stadium,STADIUM_TOUR} from './stadium.js?v=110';
-import {generatePitch,takenPitch,CONTACT_Z,ZONE,canTakePitch,missCallTime,canResolvePending} from './pitch.js?v=110';
-import {contact} from './batting.js?v=110';
-import {bindReleaseInput,bindLookInput,inputTime} from './input.js?v=110';
-import {reachableAim} from './collision.js?v=110';
-import {SWING} from './swing.js?v=110';
-import {SWING_FEEDBACK_MS,PITCH_FEEDBACK_MS,battedResultDelay} from './feedback.js?v=110';
-import {groundForcePlay} from './fielding.js?v=110';
-import {GameAudio} from './audio.js?v=110';
+import {cleanClub,selectTeam,findTeam,battingAverage,recordAppearance} from './teams.js?v=111';
+import {bindClubUI} from './club-ui.js?v=111';
+import {tutorialHit,tutorialPitch} from './tutorial.js?v=111';
+import {bindMusicMenu} from './music-menu.js?v=111';
+import {readProgress,makeProgress} from './progress.js?v=111';
+import {Stadium,STADIUM_TOUR} from './stadium.js?v=111';
+import {generatePitch,takenPitch,CONTACT_Z,ZONE,canTakePitch,missCallTime,canResolvePending} from './pitch.js?v=111';
+import {contact} from './batting.js?v=111';
+import {bindReleaseInput,bindLookInput,inputTime} from './input.js?v=111';
+import {reachableAim} from './collision.js?v=111';
+import {SWING} from './swing.js?v=111';
+import {SWING_FEEDBACK_MS,PITCH_FEEDBACK_MS,battedResultDelay} from './feedback.js?v=111';
+import {groundForcePlay} from './fielding.js?v=111';
+import {GameAudio} from './audio.js?v=111';
 const $=id=>document.getElementById(id),R=window.BaseballRules;
 let callUntil=0,battedInfoUntil=0,pitchInfoUntil=0,pendingResult=null,skipAfter=Infinity;
 let scene,state=R.initial(),phase='title',paused=false,pitch=null,due=0,swingAt=-1e6,saved=false,nextPhase='ready';
@@ -157,7 +157,7 @@ function announceResult(time){
  say(pending.result.label);due=Math.max(due,time+1500);update();
 }
 function canSkipResult(time=now()){
- return !tutorial&&phase==='result'&&!paused&&time>=skipAfter&&due-time>350;
+ return !tutorial&&phase==='result'&&!paused&&pendingResult?.result.bases!==4&&time>=skipAfter&&due-time>350;
 }
 function finishResult(time){
  if(tutorial){tutorial.stage='music';setPause(true);clubUI.step('music');return;}
