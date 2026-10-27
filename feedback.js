@@ -14,9 +14,12 @@ export function swingFeedbackOpacity(elapsed){
  return elapsed<1650?1:1-(elapsed-1650)/350;
 }
 
-// Seconds after contact, using the same landing/catch/throw events as rendering.
-export function battedResultDelay(result){
- const b=result.batted;if(!b)return 0;
+// Seconds after contact. Safe advances wait for arrival; outs/fouls retain
+// their decisive catch/throw event instead of waiting for a dugout return.
+export function battedResultDelay(result,runningTime=0){
+ const b=result.batted;
+ if(result.bases||result.hbp||result.label==='BASE ON BALLS')return Math.max(0,runningTime)/1000;
+ if(!b)return 0;
  if(b.caught)return b.fielding?.time??b.animationTime??0;
  if(result.out)return b.returnAt??b.animationTime??0;
  if(result.foul)return Math.min(b.firstBounce?.t??Infinity,b.animationTime??0);

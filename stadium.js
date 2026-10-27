@@ -1,19 +1,19 @@
-import {handPoint,poseBench,poseTransfer,samplePose,walkingLegs,sprintPose,RUN_STRIDE,anticipation,posePrepared} from './player-motion.js?v=108';
-import {loadAthletes,attachAthlete,athleteLOD,bakeAthlete,mergeBench,lowerAthleteParts} from './athlete.js?v=108';
-import {makeBattingGlove,battingArmGeometry} from './first-person.js?v=108';
-import {parkTexture,groundUV,softShadowTexture,seatGeometry,spectatorGeometry,parkNoise,CROWD_COLORS,addParkDetails} from './stadium-art.js?v=108';
-import {teamTheme} from './teams.js?v=108';
-import {followAim} from './contact-window.js?v=108';
+import {handPoint,poseBench,poseTransfer,samplePose,walkingLegs,sprintPose,RUN_STRIDE,anticipation,posePrepared} from './player-motion.js?v=109';
+import {loadAthletes,attachAthlete,athleteLOD,bakeAthlete,mergeBench,lowerAthleteParts} from './athlete.js?v=109';
+import {makeBattingGlove,battingArmGeometry} from './first-person.js?v=109';
+import {parkTexture,groundUV,softShadowTexture,seatGeometry,spectatorGeometry,parkNoise,CROWD_COLORS,addParkDetails} from './stadium-art.js?v=109';
+import {teamTheme} from './teams.js?v=109';
+import {followAim} from './contact-window.js?v=109';
 import * as T from './vendor/three.module.min.js';
-import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=108';
-import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=108';
-import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=108';
-import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=108';
-import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=108';
-import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition,homeRunDefensePlans,homeRunDefensePosition} from './fielding.js?v=108';
-import {sampleTrajectory,groundSurface} from './trajectory.js?v=108';
-export {BASES} from './field.js?v=108';
-import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=108';
+import {PitchFrames,planePoint,screenPoint,DISPLAY_BALL_RADIUS} from './aiming.js?v=109';
+import {feedbackOpacity,swingFeedbackOpacity} from './feedback.js?v=109';
+import {CONTACT_Z,ZONE,pitchVisual,pitchState} from './pitch.js?v=109';
+import {SWING,swingPose,armElbow,makeBatShape} from './swing.js?v=109';
+import {BASES,FIELDERS,FIELD,runnerArrival,fielderDistance} from './field.js?v=109';
+import {throwPlan,throwPosition,defensiveHome,forceRunnerStart,defenseAssignments,defensePosition,homeRunDefensePlans,homeRunDefensePosition} from './fielding.js?v=109';
+import {sampleTrajectory,groundSurface} from './trajectory.js?v=109';
+export {BASES} from './field.js?v=109';
+import {FOUL_BOUNDARY,DUGOUT,boundaryPoint,bowlSections,dugoutPose,fieldOutline} from './stadium-layout.js?v=109';
 const V=(x,y,z)=>new T.Vector3(x,y,z);
 const stand=n=>[BASES[n][0]+(n===2?1.8:n===1?.5:-.5),.04,BASES[n][2]-.25];
 const mat=(color,extra={})=>new T.MeshStandardMaterial({color,roughness:.9,...extra});
@@ -907,6 +907,7 @@ export class Stadium {
   if(visible)this.updateArms(pose.turn);
  }
  draw({time,phase,pitch,swingAt,paused}){
+  if(this.resultPresentation)time=Math.min(time,this.resultPresentation.at);
   if(this.hit?.announcementAt!==undefined&&!this.hit.announced)time=Math.min(time,this.hit.start+this.hit.announcementAt*1000);
   this.updateView(time,phase);
   const mark=this.lastPitchMark,markAlpha=mark?(mark.review?swingFeedbackOpacity:feedbackOpacity)(time-mark.start):0;
@@ -955,6 +956,7 @@ export class Stadium {
   this.drawSwingMark(time);
   for(const player of this.players||[])if(player.visible)athleteLOD(player,this.camera);
   this.renderer.setViewport(0,0,this.w,this.h);this.renderer.setScissorTest(false);this.renderFirstPersonScene(phase);
+  if(this.resultPresentation)this.resultPresentation.renderedThrough=time;
   const reviewVisible=this.swingMark?.visible;
   const label=typeof document!=='undefined'?document.getElementById('review-label'):null;if(label){label.hidden=!reviewVisible;if(reviewVisible)label.textContent=this.lastSwingMark.g.hit?(this.lastSwingMark.g.assisted?'보정 접촉 · 측면':'접촉 순간 · 측면'):'타격 지점 통과 · 측면';}
   if(reviewVisible&&this.reviewScene){
